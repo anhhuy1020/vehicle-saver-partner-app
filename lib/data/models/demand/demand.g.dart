@@ -12,21 +12,33 @@ Demand _$DemandFromJson(Map<String, dynamic> json) {
     ..vehicleType = json['vehicleType'] as String
     ..addressDetail = json['addressDetail'] as String
     ..problemDescription = json['problemDescription'] as String
-    ..customer = Customer.fromJson(json['customer'] as Map<String, dynamic>)
-    ..pickupLocation =
-        Place.fromJson(json['pickupLocation'] as Map<String, dynamic>)
-    ..status = _$enumDecode(_$DemandStatusEnumMap, json['status']);
+    ..customer = json['customer'] == null
+        ? null
+        : Customer.fromJson(json['customer'] as Map<String, dynamic>)
+    ..pickupLatitude = (json['pickupLatitude'] as num)?.toDouble()
+    ..pickupLongitude = (json['pickupLongitude'] as num)?.toDouble()
+    ..status = _$enumDecodeNullable(_$DemandStatusEnumMap, json['status']);
 }
 
-Map<String, dynamic> _$DemandToJson(Demand instance) => <String, dynamic>{
-      'id': instance.id,
-      'vehicleType': instance.vehicleType,
-      'addressDetail': instance.addressDetail,
-      'problemDescription': instance.problemDescription,
-      'customer': instance.customer,
-      'pickupLocation': instance.pickupLocation,
-      'status': _$DemandStatusEnumMap[instance.status],
-    };
+Map<String, dynamic> _$DemandToJson(Demand instance) {
+  final val = <String, dynamic>{};
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('id', instance.id);
+  writeNotNull('vehicleType', instance.vehicleType);
+  writeNotNull('addressDetail', instance.addressDetail);
+  writeNotNull('problemDescription', instance.problemDescription);
+  writeNotNull('customer', instance.customer);
+  writeNotNull('pickupLatitude', instance.pickupLatitude);
+  writeNotNull('pickupLongitude', instance.pickupLongitude);
+  writeNotNull('status', _$DemandStatusEnumMap[instance.status]);
+  return val;
+}
 
 T _$enumDecode<T>(
   Map<T, dynamic> enumValues,
@@ -49,9 +61,21 @@ T _$enumDecode<T>(
   return value ?? unknownValue;
 }
 
+T _$enumDecodeNullable<T>(
+  Map<T, dynamic> enumValues,
+  dynamic source, {
+  T unknownValue,
+}) {
+  if (source == null) {
+    return null;
+  }
+  return _$enumDecode<T>(enumValues, source, unknownValue: unknownValue);
+}
+
 const _$DemandStatusEnumMap = {
-  DemandStatus.SEARCHING_PARTNER: 'FINDING_PARTNER',
+  DemandStatus.SEARCHING_PARTNER: 'SEARCHING_PARTNER',
   DemandStatus.HANDLING: 'HANDLING',
   DemandStatus.PAYING: 'PAYING',
   DemandStatus.COMPLETED: 'COMPLETED',
+  DemandStatus.CANCELED: 'CANCELED',
 };

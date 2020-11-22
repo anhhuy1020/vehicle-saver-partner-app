@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/app_router.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
+import 'package:vehicles_saver_partner/network/socket/socket_connector.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/profile_page.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/history_page.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/home_page.dart';
@@ -33,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen>{
   void _onIconTapped(int index) {
     print('_onIconTapped :$index');
     if (index == 2) {
+      demandBloc.isHavingDemand()?
+      Navigator.of(context).pushNamed(AppRoute.trackingDemandScreen):
       Navigator.of(context).pushNamed(AppRoute.listDemandScreen);
     } else {
       setState(() {
@@ -45,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen>{
   @override
   Widget build(BuildContext context) {
     demandBloc = Provider.of<DemandBloc>(context);
+    demandBloc.onConnectServer(SocketConnector.getInstance());
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -43,23 +44,76 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
 
   Map<PolylineId, Polyline> polylines = <PolylineId, Polyline>{};
   PolylineId selectedPolyline;
-  Position _position;
-  String placemark = '';
+  Position currentLocation;
+  final Geolocator _locationService = Geolocator();
+  PermissionStatus permission;
+  bool isEnabledLocation = false;
   double distance = 0;
-  LatLng currentLocation = LatLng(39.170655, -95.449974);
+  String selectedDistance = "1";
+  double _radius = 5000;
   List<Map<String, dynamic>> listDistance = [
     {"id": 1, "title": "5 km"},
     {"id": 2, "title": "10 km"},
     {"id": 3, "title": "15 km"}
   ];
-  String selectedDistance = "1";
-  double _radius = 5000;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    _getCurrentLocation();
+    print("initState");
+    updateListDemand().then((_) => changeCircle(selectedDistance));
+  }
+
+  Future updateListDemand() async {
+    await checkPermission();
+    if (!isEnabledLocation) {
+      return;
+    }
+    await _getCurrentLocation().then((_) => fetchListDemand);
+
+
+    const timeRequest = const Duration(seconds: 15);
+    Timer.periodic(timeRequest, (Timer t) {
+      if(!demandBloc.isHavingDemand()){
+        updateListDemand();
+      }
+    });
+  }
+
+  fetchListDemand() {
+    if(currentLocation != null){
+      demandBloc.fetchListDemand(currentLocation.latitude, currentLocation.longitude);
+    }
+  }
+  /// Get current location
+  Future<void> _getCurrentLocation() async {
+    print("_initCurrentLocation");
+
+    currentLocation = await _locationService.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation);
+    print("currentLocation: $currentLocation");
+    if (currentLocation != null) {
+      moveCameraToMyLocation();
+    }
+  }
+
+  void moveCameraToMyLocation() {
+    moveCameraToLocation(currentLocation?.latitude, currentLocation?.longitude);
+  }
+
+  moveCameraToLocation(double lat, double lng) {
+    _mapController?.animateCamera(
+      CameraUpdate?.newCameraPosition(
+        CameraPosition(
+          target: LatLng(lat, lng),
+          zoom: 14.0,
+        ),
+      ),
+    );
+  }
+
+  Future<void> checkPermission() async {
+    isEnabledLocation = await Permission.location.serviceStatus.isEnabled;
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -72,10 +126,13 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     _addCircle();
   }
 
-  String calDistanceStrFromCurLocation(Place place) {
-    double distance = calculateDistance(currentLocation.latitude,
-        currentLocation.longitude, place.lat, place.lng);
-    return distance.toString() + " km";
+  String calDistanceStrFromCurLocation(Demand demand) {
+    double distance = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        demand.pickupLatitude,
+        demand.pickupLongitude);
+    return distance.toStringAsFixed(2);
   }
 
   double calculateDistance(lat1, lng1, lat2, lng2) {
@@ -92,32 +149,6 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     super.dispose();
   }
 
-  Future<void> _getCurrentLocation() async {
-    Position position;
-    try {
-      final Geolocator geolocator = Geolocator()
-        ..forceAndroidLocationManager = true;
-      position = await geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.bestForNavigation);
-    } on PlatformException {
-      position = null;
-    }
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _position = position;
-    });
-    List<Placemark> placemarks = await Geolocator()
-        .placemarkFromCoordinates(_position.latitude, _position.longitude);
-    if (placemarks != null && placemarks.isNotEmpty) {
-      final Placemark pos = placemarks[0];
-      setState(() {
-        placemark = pos.thoroughfare + ', ' + pos.locality;
-      });
-    }
-  }
-
   Future<void> _createMarkerImageFromAsset(BuildContext context) async {
     if (_markerIcon == null) {
       final ImageConfiguration imageConfiguration =
@@ -126,6 +157,31 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
               imageConfiguration, "assets/image/marker/car_top_96.png")
           .then(_updateBitmap);
     }
+  }
+
+  Widget getListOptionDistance() {
+    final List<Widget> choiceChips = listDistance.map<Widget>((value) {
+      return new Padding(
+          padding: const EdgeInsets.all(3.0),
+          child: ChoiceChip(
+              key: ValueKey<String>(value['id'].toString()),
+              labelStyle: textGrey,
+              backgroundColor: greyColor2,
+              selectedColor: primaryColor,
+              elevation: 2.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3.0),
+              ),
+              selected: selectedDistance == value['id'].toString(),
+              label: Text((value['title'])),
+              onSelected: (bool check) {
+                setState(() {
+                  selectedDistance = check ? value["id"].toString() : '';
+                  changeCircle(selectedDistance);
+                });
+              }));
+    }).toList();
+    return new Wrap(children: choiceChips);
   }
 
   void _updateBitmap(BitmapDescriptor bitmap) {
@@ -141,30 +197,33 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     final size = Size(120, 120);
     final double borderStroke = 20;
 
-    final File markerImageFile = await DefaultCacheManager().getSingleFile(avatarUrl);
+    //get image from internet or cache
+    final File markerImageFile =
+        await DefaultCacheManager().getSingleFile(avatarUrl);
     final Uint8List markerImageBytes = await markerImageFile.readAsBytes();
+    //resize
     final IMG.Image image = IMG.decodeImage(markerImageBytes);
-    final IMG.Image resized = IMG.copyResize(image, width: (size.width - borderStroke).toInt());
+    final IMG.Image resized =
+        IMG.copyResize(image, width: (size.width - borderStroke).toInt());
     final List<int> resizedBytes = IMG.encodePng(resized);
 
     ui.decodeImageFromList(resizedBytes, (image) async {
-
       final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
       final Canvas canvas = Canvas(pictureRecorder);
 
-
-      final center = Offset(size.width/2, size.height/2);
+      final center = Offset(size.width / 2, size.height / 2);
       final radius = size.width / 2;
       double drawImageWidth = 0;
       double drawImageHeight = 0;
 
       Path path = Path()
-        ..addOval(Rect.fromLTWH(drawImageWidth, drawImageHeight,
-            size.width, size.height));
+        ..addOval(Rect.fromLTWH(
+            drawImageWidth, drawImageHeight, size.width, size.height));
 
       canvas.clipPath(path);
 
-      canvas.drawImage(image, Offset(borderStroke/2, borderStroke/2), Paint());
+      canvas.drawImage(
+          image, Offset(borderStroke / 2, borderStroke / 2), Paint());
 
       Paint paintBorder = Paint()
         ..color = primaryColor
@@ -219,31 +278,6 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
 
   /// Widget change the radius Circle.
 
-  Widget getListOptionDistance() {
-    final List<Widget> choiceChips = listDistance.map<Widget>((value) {
-      return new Padding(
-          padding: const EdgeInsets.all(3.0),
-          child: ChoiceChip(
-              key: ValueKey<String>(value['id'].toString()),
-              labelStyle: textGrey,
-              backgroundColor: greyColor2,
-              selectedColor: primaryColor,
-              elevation: 2.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(3.0),
-              ),
-              selected: selectedDistance == value['id'].toString(),
-              label: Text((value['title'])),
-              onSelected: (bool check) {
-                setState(() {
-                  selectedDistance = check ? value["id"].toString() : '';
-                  changeCircle(selectedDistance);
-                });
-              }));
-    }).toList();
-    return new Wrap(children: choiceChips);
-  }
-
   ///Filter and display markers in that area
   ///My data is demo. You can get data from your api and use my function
   ///to filter and display markers around the current location.
@@ -270,11 +304,14 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     _addCircle();
     for (int i = 0; i < demandBloc.availableDemands.length; i++) {
       Demand demand = demandBloc.availableDemands[i];
-      Place place = demand.pickupLocation;
-      distance = calculateDistance(currentLocation.latitude,
-          currentLocation.longitude, place.lat, place.lng);
+      distance = calculateDistance(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          demand.pickupLatitude,
+          demand.pickupLongitude);
       if (distance * 1000 < _radius) {
-        _addMarker(demand.id, demand.customer.avatarUrl, place.lat, place.lng);
+        _addMarker(demand.id, demand.customer.avatarUrl, demand.pickupLatitude,
+            demand.pickupLongitude);
       } else {
         print("remove demand ${demand.id}");
         _remove(demand.id);
@@ -312,26 +349,35 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
         child: Column(
           children: <Widget>[
             Container(
-                height: 30,
-                color: Color(0xfff5f5f5),
-                child: Text("Danh sách yêu cầu")),
-            Expanded(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: demandBloc.availableDemands.length,
-                itemBuilder: (context, index) {
-                  return GestureDetector(
-                      onTap: () {
-                        _selectDemand(index);
-                      },
-                      child: ItemDemand(
-                          demand: demandBloc.availableDemands[index],
-                          distance: calDistanceStrFromCurLocation(demandBloc
-                              .availableDemands[index].pickupLocation)));
-                },
-                separatorBuilder: (context, index) => Divider(
-                  height: 1,
-                  color: greyColor.withOpacity(0.5),
+                height: 100,
+                width: double.infinity,
+                color: primaryColor,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      Text("Danh sách yêu cầu", style: headingBlack,)
+                    ]
+                )
+            ),
+            SingleChildScrollView(
+              child: Expanded(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: demandBloc.availableDemands.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                        onTap: () {
+                          _selectDemand(index);
+                        },
+                        child: ItemDemand(
+                            demand: demandBloc.availableDemands[index],
+                            distance: calDistanceStrFromCurLocation(
+                                demandBloc.availableDemands[index])));
+                  },
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: greyColor.withOpacity(0.5),
+                  ),
                 ),
               ),
             ),
@@ -353,8 +399,13 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                       myLocationEnabled: true,
                       myLocationButtonEnabled: true,
                       initialCameraPosition: CameraPosition(
-                        target: LatLng(currentLocation.latitude,
-                            currentLocation.longitude),
+                        target: LatLng(
+                            currentLocation != null
+                                ? currentLocation.latitude
+                                : 0.0,
+                            currentLocation != null
+                                ? currentLocation.longitude
+                                : 0.0),
                         zoom: 12,
                       ),
                       markers: Set<Marker>.of(markers.values),
@@ -363,31 +414,31 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
             ),
             Positioned(
               left: 0,
-              top: 0,
+              top: 50,
               right: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.max,
-                children: <Widget>[
-                  AppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0.0,
-                    centerTitle: true,
-                    leading: FlatButton(
-                        onPressed: () {
-                          _scaffoldKey.currentState.openDrawer();
-                        },
-                        child: Icon(
-                          Icons.menu,
-                          color: blackColor,
-                        )),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 10.0, right: 10.0),
-                    child: getListOptionDistance(),
-                  )
-                ],
+              child: Center(
+                child: getListOptionDistance(),
               ),
             ),
+            Positioned(
+                top: MediaQuery.of(context).size.height / 2,
+                right: 0,
+                child: Container(
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                      color: primaryColor,
+                      borderRadius:
+                          BorderRadius.horizontal(left: Radius.circular(5.0))),
+                  child: GestureDetector(
+                    onTap: _scaffoldKey?.currentState?.openEndDrawer,
+                    child: Icon(
+                      Icons.arrow_back_ios_sharp,
+                      size: 20,
+                      color: blackColor,
+                    ),
+                  ),
+                )),
           ],
         )),
       ),

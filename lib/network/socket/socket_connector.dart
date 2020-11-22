@@ -10,6 +10,12 @@ class SocketConnector{
   SocketIOManager manager = SocketIOManager();
   SocketIO socket;
   ConnectionStatus status;
+  Function onLogin;
+  Function onAcceptDemand;
+  Function onCancelDemand;
+  Function onUpdateListDemand;
+  Function onUpdateCurrentDemand;
+  String token;
 
 
   SocketConnector();
@@ -72,6 +78,45 @@ class SocketConnector{
     });
   }
 
+  listenUpdateCurrentDemand(Function listener){
+    socket.isConnected().then((check) {
+      if(check) {
+        if(onUpdateCurrentDemand != null){
+          socket.off(SocketEvent.FETCH_CURRENT_DEMAND, onUpdateCurrentDemand);
+        }
+        onUpdateCurrentDemand = listener;
+        socket.on(SocketEvent.FETCH_CURRENT_DEMAND, onUpdateCurrentDemand);
+      }
+    });
+  }
+  
+  listenUpdateListDemand(Function listener){
+    print("listenUpdateDemand");
+    socket.isConnected().then((check) {
+      if(check) {
+        if(onUpdateListDemand != null){
+          socket.off(SocketEvent.FETCH_LIST_DEMAND, onUpdateListDemand);
+        }
+        onUpdateListDemand = listener;
+        socket.on(SocketEvent.FETCH_LIST_DEMAND, onUpdateListDemand);
+      }
+    });
+  }
+
+  fetchCurrentDemand () async {
+    checkConnection(() {
+      socket.emit(SocketEvent.FETCH_CURRENT_DEMAND, [token]);
+    },  (msg) => print("fetchCurrentDemand: $msg")
+    );
+  }
+
+  fetchListDemand (req) async {
+    checkConnection(() {
+      socket.emit(SocketEvent.FETCH_LIST_DEMAND, [req, token]);
+    },  (msg) => print("fetchCurrentDemand: $msg")
+    );
+  }
+  
   Future<bool> checkConnection(Function callback, Function onError) async {
     if(status == null){
        createSocketConnection(callback, onError);
@@ -82,17 +127,20 @@ class SocketConnector{
   
   login (UserLogin loginData, Function onSuccess, Function onError) async {
     checkConnection(() {
-        socket.emit(SocketEvent.LOGIN, [loginData.toJson()]);
-        socket.on(SocketEvent.LOGIN, (res) {
-          print(res);
-          if (res['errorCode'] == SocketError.SUCCESS) {
-            onSuccess(res['body']);
-          } else {
-            onError(res['body']["errorMessage"]);
-          }
-          socket.off(SocketEvent.LOGIN);
-        });
-      },  onError
+      this.onLogin = (res) {
+        print(res);
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          token = res['body']['token'];
+          onSuccess(res['body']['partner']);
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+        socket.off(SocketEvent.LOGIN, onLogin);
+
+      };
+      socket.on(SocketEvent.LOGIN, onLogin);
+      socket.emit(SocketEvent.LOGIN, [loginData.toJson()]);
+    },  onError
     );
   }
 }

@@ -5,14 +5,15 @@ import 'customer.dart';
 
 part'demand.g.dart';
 
-@JsonSerializable(nullable: false, includeIfNull: false)
+@JsonSerializable(nullable: true, includeIfNull: false)
 class Demand{
   String id;
   String vehicleType;
   String addressDetail;
   String problemDescription;
   Customer customer;
-  Place pickupLocation;
+  double pickupLatitude;
+  double pickupLongitude;
   DemandStatus status;
 
   Demand();
