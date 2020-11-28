@@ -48,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen>{
   @override
   Widget build(BuildContext context) {
     demandBloc = Provider.of<DemandBloc>(context);
-    demandBloc.onConnectServer(SocketConnector.getInstance());
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(

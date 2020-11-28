@@ -1,13 +1,25 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image/image.dart' as IMG;
 
+import 'package:expandable/expandable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
+import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/place_bloc.dart';
-import 'package:vehicles_saver_partner/components/dialog/msg_dilog.dart';
+import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
+import 'package:vehicles_saver_partner/data/models/demand/demand.dart';
 import 'package:vehicles_saver_partner/data/models/map/direction_model.dart';
 import 'package:vehicles_saver_partner/data/models/map/get_routes_request_model.dart';
 import 'package:vehicles_saver_partner/network/http/apis.dart';
@@ -15,7 +27,9 @@ import 'package:vehicles_saver_partner/components/auto_rotation_marker.dart' as 
 import 'package:vehicles_saver_partner/screens/tracking_demand/screens/chat_screen/chat_screen.dart';
 import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/arriving_detail_widget.dart';
 import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/demand_detail_widget.dart';
+import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/icon_action_widget.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
+import 'package:vehicles_saver_partner/utils/utility.dart';
 
 import '../../app_router.dart';
 import '../../google_map_helper.dart';
@@ -23,8 +37,10 @@ import 'widgets/select_service_widget.dart';
 
 class TrackingDemandView extends StatefulWidget {
   final PlaceBloc placeBloc;
+  final DemandBloc demandBloc;
+  final AuthBloc authBloc;
 
-  TrackingDemandView({this.placeBloc});
+  TrackingDemandView({this.placeBloc, this.demandBloc, this.authBloc});
 
   @override
   _TrackingDemandViewState createState() => _TrackingDemandViewState();
@@ -35,26 +51,24 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
   List<LatLng> points = <LatLng>[];
   GoogleMapController _mapController;
 
-  Map<MarkerId, Marker> markers = <MarkerId, Marker>{};
-  MarkerId selectedMarker;
-  BitmapDescriptor markerIcon;
+  ExpandableController _expandableController =
+  new ExpandableController(initialExpanded: true);
+  Position currentLocation;
 
+  Map<MarkerId, Marker> markers = <MarkerId, Marker>{};
+  PermissionStatus permission;
+  bool isEnabledLocation = false;
   Map<PolylineId, Polyline> polyLines = <PolylineId, Polyline>{};
   int _polylineIdCounter = 1;
   PolylineId selectedPolyline;
 
   bool checkPlatform = Platform.isIOS;
   String distance, duration;
-  bool isSearchingPartner = true;
-  bool isResult = false;
-  LatLng positionDriver;
-  bool isComplete = false;
-  var apis = APIs();
-  List<Routes> routesData;
-  final GMapViewHelper _gMapViewHelper = GMapViewHelper();
-  PanelController panelController = new PanelController();
-  String selectedService;
 
+  List<Routes> routesData;
+  final Geolocator _locationService = Geolocator();
+  final GMapViewHelper _gMapViewHelper = GMapViewHelper();
+  String toAddressMarkerId = "to_address";
   void _onMapCreated(GoogleMapController controller) {
     this._mapController = controller;
   }
@@ -62,9 +76,15 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
   @override
   void initState() {
     super.initState();
-    print(widget?.placeBloc?.pickupLocation);
-    print(widget?.placeBloc?.partnerLocation);
-    searchPartner();
+    _getCurrentLocation().then((_) {
+      print("updateListDemand initState $currentLocation");
+      if (currentLocation != null) {
+        moveCameraToMyLocation();
+        final Demand currentDemand  = widget?.demandBloc?.currentDemand;
+        _addMarker(toAddressMarkerId, currentDemand.customer.avatarUrl, currentDemand.pickupLatitude, currentDemand.pickupLongitude);
+        getRouter();
+      }
+    });
   }
 
   @override
@@ -72,38 +92,60 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
     super.dispose();
   }
 
-  addMakers() {
-    checkPlatform ? print('ios') : print("adnroid");
-    final MarkerId markerIdFrom = MarkerId("from_address");
-    final MarkerId markerIdTo = MarkerId("to_address");
+  _addMarker(
+      String markerIdVal, String avatarUrl, double lat, double lng) async {
+    print("_addMarker $lat, $lng, $currentLocation");
+    final MarkerId markerId = MarkerId(markerIdVal);
+    final size = Size(60, 60);
+    final double borderStroke = 10;
 
-    final Marker marker = Marker(
-      markerId: markerIdFrom,
-      position: LatLng(widget?.placeBloc?.pickupLocation?.lat,
-          widget?.placeBloc?.pickupLocation?.lng),
-      infoWindow: InfoWindow(title: widget?.placeBloc?.pickupLocation?.name,
-          snippet: widget?.placeBloc?.pickupLocation?.formattedAddress),
-      icon: checkPlatform ? BitmapDescriptor.fromAsset(
-          "assets/image/marker/ic_dropoff_48.png") : BitmapDescriptor.fromAsset(
-          "assets/image/marker/ic_dropoff_96.png"),
-      onTap: () {},
-    );
+    //get image from internet or cache
+    final File markerImageFile =
+    await DefaultCacheManager().getSingleFile(avatarUrl);
+    final Uint8List markerImageBytes = await markerImageFile.readAsBytes();
+    //resize
+    final IMG.Image image = IMG.decodeImage(markerImageBytes);
+    final IMG.Image resized =
+    IMG.copyResize(image, width: (size.width - borderStroke).toInt());
+    final List<int> resizedBytes = IMG.encodePng(resized);
 
-    final Marker markerTo = Marker(
-      markerId: markerIdTo,
-      position: LatLng(widget?.placeBloc?.partnerLocation?.lat,
-          widget?.placeBloc?.partnerLocation?.lng),
-      infoWindow: InfoWindow(title: widget?.placeBloc?.partnerLocation?.name,
-          snippet: widget?.placeBloc?.partnerLocation?.formattedAddress),
-      icon: checkPlatform ? BitmapDescriptor.fromAsset(
-          "assets/image/marker/ic_pick_48.png") : BitmapDescriptor.fromAsset(
-          "assets/image/marker/ic_pick_48.png"),
-      onTap: () {},
-    );
+    ui.decodeImageFromList(resizedBytes, (image) async {
+      final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+      final Canvas canvas = Canvas(pictureRecorder);
 
-    setState(() {
-      markers[markerIdFrom] = marker;
-      markers[markerIdTo] = markerTo;
+      final center = Offset(size.width / 2, size.height / 2);
+      final radius = size.width / 2;
+      double drawImageWidth = 0;
+      double drawImageHeight = 0;
+
+      Path path = Path()
+        ..addOval(Rect.fromLTWH(
+            drawImageWidth, drawImageHeight, size.width, size.height));
+
+      canvas.clipPath(path);
+
+      canvas.drawImage(
+          image, Offset(borderStroke / 2, borderStroke / 2), Paint());
+
+      Paint paintBorder = Paint()
+        ..color = primaryColor
+        ..strokeWidth = borderStroke.toDouble()
+        ..style = PaintingStyle.stroke;
+      canvas.drawCircle(center, radius, paintBorder);
+      final img = await pictureRecorder.endRecording().toImage(
+        size.width.toInt(),
+        size.height.toInt(),
+      );
+      final data = await img.toByteData(format: ui.ImageByteFormat.png);
+
+      final Marker marker = Marker(
+        markerId: markerId,
+        position: LatLng(lat, lng),
+        icon: BitmapDescriptor.fromBytes(data.buffer.asUint8List()),
+      );
+      setState(() {
+        markers[markerId] = marker;
+      });
     });
   }
 
@@ -113,19 +155,19 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
     final PolylineId polylineId = PolylineId(polylineIdVal);
     polyLines.clear();
     var router;
-    LatLng _pickupLocation = LatLng(widget?.placeBloc?.pickupLocation?.lat,
-        widget?.placeBloc?.pickupLocation?.lng);
-    LatLng _partnerLocation = LatLng(widget?.placeBloc?.partnerLocation?.lat,
-        widget?.placeBloc?.partnerLocation?.lng);
+    LatLng _pickupLocation = LatLng(widget?.demandBloc?.currentDemand?.pickupLatitude,
+        widget?.demandBloc?.currentDemand?.pickupLongitude);
+    LatLng _currentLocation = LatLng(currentLocation.latitude, currentLocation.longitude);
 
-    await apis.getRoutes(
+    await APIs.getRoutes(
       getRoutesRequest: GetRoutesRequestModel(
           fromLocation: _pickupLocation,
-          toLocation: _partnerLocation,
+          toLocation: _currentLocation,
           mode: "driving"
       ),
     ).then((data) {
       if (data != null) {
+        print("getRoutes: $data");
         router = data?.result?.routes[0]?.overviewPolyline?.points;
         routesData = data?.result?.routes;
       }
@@ -140,240 +182,492 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
       polylineIdVal: polylineIdVal,
       router: router,
       pickupLocation: _pickupLocation,
-      toLocation: _partnerLocation,
+      toLocation: _currentLocation,
     );
     setState(() {});
     _gMapViewHelper.cameraMove(fromLocation: _pickupLocation,
-        toLocation: _partnerLocation,
+        toLocation: _currentLocation,
         mapController: _mapController);
   }
+  
+  Future<void> checkPermission() async {
+    isEnabledLocation = await Permission.location.serviceStatus.isEnabled;
+  }
 
-  ///Real-time test of driver's location
-  ///My data is demo.
-  ///This function works by: every 5 or 2 seconds will request for api and after the data returns,
-  ///the function will update the driver's position on the map.
-
-  double valueRotation;
-
-  runTrackingDriver(var _listPosition) {
-    int count = 1;
-    int two = count;
-    const timeRequest = const Duration(seconds: 2);
-    Timer.periodic(timeRequest, (Timer t) {
-      LatLng positionDriverBefore = _listPosition[two - 1];
-      positionDriver = _listPosition[count++];
-      print(count);
-
-      valueRotation = rm.calculateangle(
-          positionDriverBefore.latitude, positionDriverBefore.longitude,
-          positionDriver.latitude, positionDriver.longitude);
-      print(valueRotation);
-      addMakersDriver(positionDriver);
-      _mapController?.animateCamera(
-        CameraUpdate?.newCameraPosition(
-          CameraPosition(
-            target: positionDriver,
-            zoom: 15.0,
-          ),
-        ),
-      );
-      if (count == _listPosition.length) {
-        setState(() {
-          t.cancel();
-          isComplete = true;
-          // showDialog(context: context, child: dialogConfirm());
-        });
+  void fetchLocation() {
+    checkPermission()?.then((_) {
+      if (isEnabledLocation) {
+        _getCurrentLocation();
       }
     });
   }
 
-  addMakersDriver(LatLng _position) {
-    final MarkerId markerDriver = MarkerId("driver");
-    final Marker marker = Marker(
-      markerId: markerDriver,
-      position: _position,
-      icon: checkPlatform ? BitmapDescriptor.fromAsset(
-          "assets/image/icon_car_32.png") : BitmapDescriptor.fromAsset(
-          "assets/image/icon_car_120.png"),
-      draggable: false,
-      rotation: 0.0,
-      consumeTapEvents: true,
-      onTap: () {
-        // _onMarkerTapped(markerId);
-      },
-    );
-    setState(() {
-      markers[markerDriver] = marker;
-    });
+  /// Get current location
+  Future<void> _getCurrentLocation() async {
+    print("_initCurrentLocation");
+
+    currentLocation = await _locationService.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation);
+    print("currentLocation: $currentLocation");
   }
 
-  dialogOption() {
-    return AlertDialog(
-      title: Text("Option"),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0)
-      ),
-      content: Container(
-        child: TextFormField(
-          style: textStyle,
-          keyboardType: TextInputType.text,
-          decoration: InputDecoration(
-            //border: InputBorder.none,
-            hintText: "Ex: I'm standing in front of the bus stop...",
-            // hideDivider: true
-          ),
-        ),
-      ),
-      actions: <Widget>[
-        FlatButton(
-          child: Text('Cancel'),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        FlatButton(
-          child: Text('Ok'),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
+  void _onTapMap(LatLng latLng) {
+    // FocusScope.of(context).requestFocus(new FocusNode());
 
-      ],
+    if (_expandableController.expanded) {
+      _expandableController.expanded = false;
+    }
+  }
+
+  void moveCameraToMyLocation() {
+    moveCameraToLocation(currentLocation?.latitude, currentLocation?.longitude);
+  }
+
+  moveCameraToLocation(double lat, double lng){
+    _mapController?.animateCamera(
+      CameraUpdate?.newCameraPosition(
+        CameraPosition(
+          target: LatLng(lat, lng),
+          zoom: 14.0,
+        ),
+      ),
     );
   }
 
-  dialogPromoCode() {
-    return AlertDialog(
-      title: Text("Promo Code"),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0)
-      ),
-      content: Container(
-        child: TextFormField(
-          style: textStyle,
-          keyboardType: TextInputType.text,
-          decoration: InputDecoration(
-            //border: InputBorder.none,
-            hintText: "Enter promo code",
-            // hideDivider: true
-          ),
-        ),
-      ),
-      actions: <Widget>[
-        FlatButton(
-          child: Text('Confirm'),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        )
-      ],
-    );
+  onCompleteDemand(){
+    Navigator.of(context).pushNamed(AppRoute.invoiceScreen);
   }
 
-  searchPartner() {
-    print("Submit");
-    Timer(Duration(seconds: 5), () {
-      if (isSearchingPartner) {
-        MsgDialog.showConfirmDialog(context, "Không tìm thấy partner",
-            "Xin lỗi, chúng tôi không thể tìm thấy tài xế cho bạn. Bạn có muốn tiếp tục?",
-            searchPartner, () =>
-                Navigator.of(context).pushReplacementNamed(AppRoute.homeScreen));
-      }
-    });
+  onCancelDemand(){
+
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        buildContent(context),
-        Positioned(
-          left: 18,
-          top: 0,
-          right: 0,
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: <Widget>[
-              AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0.0,
-                centerTitle: true,
-                leading: GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pushReplacementNamed(
-                          AppRoute.homeScreen);
-                    },
-                    child: Container(
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30.0),
-                            color: Colors.white
-                        ),
-                        child: Icon(Icons.arrow_back_ios, color: blackColor,)
-                    )
-                ),
-              ),
-            ],
-          ),
-        )
-      ],
-    );
-  }
+    switch(widget?.demandBloc?.currentDemand?.status){
+      case DemandStatus.PAYING:
+        Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.invoiceScreen));
+        break;
+      case DemandStatus.COMPLETED:
+        Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.homeScreen));
+        break;
+      case DemandStatus.CANCELED:
+        Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.homeScreen));
+        break;
+    }
 
-  Widget buildContent(BuildContext context) {
-    final screenSize = MediaQuery
-        .of(context)
-        .size;
-    print(selectedService);
-
-    return SlidingUpPanel(
-      controller: panelController,
-      maxHeight: screenSize.height * 0.8,
-      minHeight: 0.0,
-      parallaxEnabled: false,
-      parallaxOffset: 0.8,
-      backdropEnabled: false,
-      renderPanelSheet: false,
-      borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(15.0), topRight: Radius.circular(15.0)),
-      body: Stack(
-        children: <Widget>[
-          SizedBox(
+      return Scaffold(
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).requestFocus(new FocusNode());
+        },
+        child: Stack(
+          children: <Widget>[
+            SizedBox(
+              height: MediaQuery.of(context).size.height,
               child: GoogleMap(
+                markers: Set<Marker>.of(markers.values),
                 onMapCreated: _onMapCreated,
                 myLocationEnabled: true,
                 myLocationButtonEnabled: false,
+                compassEnabled: false,
+                onTap: _onTapMap,
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(widget?.placeBloc?.pickupLocation?.lat,
-                      widget?.placeBloc?.pickupLocation?.lng),
-                  zoom: 13,
+                  target: LatLng(
+                      currentLocation != null
+                          ? currentLocation?.latitude
+                          : 0.0,
+                      currentLocation != null
+                          ? currentLocation?.longitude
+                          : 0.0),
+                  zoom: 12.0,
                 ),
-                markers: Set<Marker>.of(markers.values),
-                polylines: Set<Polyline>.of(polyLines.values),
-              )
-          ),
-          Positioned(
-            bottom: 0.0,
-            left: 0.0,
-            right: 0.0,
-            child: Material(
-              elevation: 10.0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(15),
-                    topRight: Radius.circular(15),
-                  )
-              ),
-              child:
-              DemandDetailWidget(
-                  trackingSubmit: searchPartner,
-                  panelController: panelController,
-                  distance: distance,
-                  duration: duration
               ),
             ),
-          ),
-        ],
-      )
+            Positioned(
+              left: 18,
+              top: 0,
+              right: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                children: <Widget>[
+                  AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0.0,
+                    centerTitle: true,
+                    leading: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pushReplacementNamed(
+                              AppRoute.homeScreen);
+                        },
+                        child: Container(
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30.0),
+                                color: Colors.white
+                            ),
+                            child: Icon(Icons.arrow_back_ios, color: blackColor,)
+                        )
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: SingleChildScrollView(
+                  child: ExpandablePanel(
+                    controller: _expandableController,
+                    header: Padding(
+                      padding: const EdgeInsets.only(right: 18.0, bottom: 18.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 40.0,
+                            width: 40.0,
+                            child: GestureDetector(
+                              onTap: () {
+                                moveCameraToMyLocation();
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(100.0),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.my_location,
+                                  size: 20.0,
+                                  color: blackColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    collapsed: Container(
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                          color: Colors.white),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(right: 10.0, top: 10.0),
+                            child: ExpandableButton(
+                                child: Icon(
+                                  Icons.keyboard_arrow_up,
+                                  size: 32.0,
+                                )),
+                          ),
+                          Container(
+                            height: 200.0,
+                            padding: EdgeInsets.only(top: 0, left: 20, right: 20, bottom: 10),
+                            child: Column(
+                              children: <Widget>[
+                                Row(
+                                  //crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Expanded(
+                                      flex: 2,
+                                      child: Column(
+                                        children: <Widget>[
+                                          Material(
+                                            elevation: 10.0,
+                                            color: Colors.white,
+                                            shape: CircleBorder(),
+                                            child: Padding(
+                                              padding: EdgeInsets.all(2.0),
+                                              child: SizedBox(
+                                                height: 70,
+                                                width: 70,
+                                                child: CircleAvatar(
+                                                    radius: 30,
+                                                    backgroundColor: Colors.transparent,
+                                                    backgroundImage: CachedNetworkImageProvider(
+                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl,
+                                                    )
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 5),
+                                          Text(widget?.demandBloc?.currentDemand?.customer?.name,
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.clip,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        padding: EdgeInsets.only(left: 20.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children: <Widget>[
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(50.0),
+                                                color: Colors.amber[100],
+                                              ),
+                                              padding: EdgeInsets.fromLTRB(7.0, 5.0, 7.0, 5.0),
+                                              child: Text(widget?.demandBloc?.currentDemand?.vehicleType,
+                                                style: TextStyle(
+                                                    fontSize: 18,
+                                                    color: blackColor,
+                                                    fontWeight: FontWeight.bold
+                                                ),
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(top:3.0,right:5.0),
+                                              child: Text(currentLocation != null?(Utility.calculateDistance(
+                                                  currentLocation.latitude,
+                                                  currentLocation.longitude,
+                                                  widget?.demandBloc?.currentDemand?.pickupLatitude,
+                                                  widget?.demandBloc?.currentDemand?.pickupLongitude)
+                                                  .toStringAsFixed(2) + " km"):"",style: textGrey,),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(top: 10, left: 20, right: 20),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: <Widget>[
+                                      IconAction(
+                                          icon: Icons.call,
+                                          onTap: () => launch('tel:${widget?.demandBloc?.currentDemand?.customer?.phone}')
+                                      ),
+                                      IconAction(
+                                        icon: MdiIcons.chatOutline,
+                                        onTap: (){
+                                          Navigator.of(context).push(new MaterialPageRoute<Null>(
+                                              builder: (BuildContext context) {
+                                                return ChatScreen();
+                                              },
+                                              fullscreenDialog: true
+                                          ));
+                                        },
+                                      ),
+                                      IconAction(
+                                        icon: Icons.clear,
+                                        onTap: onCancelDemand
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10.0),
+                          ),
+                        ],
+                      ),
+                    ),
+                    expanded: Container(
+                      padding: EdgeInsets.only(right: 10.0),
+                      height: 500.0,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.all(Radius.circular(20.0)),
+                          color: Colors.white),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(right: 10.0, top: 0.0),
+                            child: ExpandableButton(
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 32.0,
+                                )),
+                          ),
+                          Container(
+                            padding: EdgeInsets.only(top: 0, left: 20, right: 20, bottom: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(
+                                  //crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Expanded(
+                                      flex: 2,
+                                      child: Column(
+                                        children: <Widget>[
+                                          Material(
+                                            elevation: 10.0,
+                                            color: Colors.white,
+                                            shape: CircleBorder(),
+                                            child: Padding(
+                                              padding: EdgeInsets.all(2.0),
+                                              child: SizedBox(
+                                                height: 70,
+                                                width: 70,
+                                                child: CircleAvatar(
+                                                    radius: 30,
+                                                    backgroundColor: Colors.transparent,
+                                                    backgroundImage: CachedNetworkImageProvider(
+                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl,
+                                                    )
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 5),
+                                          Text(widget?.demandBloc?.currentDemand?.customer?.name,
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.clip,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        padding: EdgeInsets.only(left: 20.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children: <Widget>[
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(50.0),
+                                                color: Colors.amber[100],
+                                              ),
+                                              padding: EdgeInsets.fromLTRB(7.0, 5.0, 7.0, 5.0),
+                                              child: Text(widget?.demandBloc?.currentDemand?.vehicleType,
+                                                style: TextStyle(
+                                                    fontSize: 18,
+                                                    color: blackColor,
+                                                    fontWeight: FontWeight.bold
+                                                ),
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(top:3.0, right:5.0),
+                                              child: Text(currentLocation != null?(Utility.calculateDistance(
+                                                  currentLocation.latitude,
+                                                  currentLocation.longitude,
+                                                  widget?.demandBloc?.currentDemand?.pickupLatitude,
+                                                  widget?.demandBloc?.currentDemand?.pickupLongitude)
+                                                  .toStringAsFixed(2) + " km"):"",style: textGrey,),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                    padding: EdgeInsets.fromLTRB(15.0, 10.0, 0.0, 5.0),
+                                    child: Text("Địa chỉ", style: textGrey,)
+                                  ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15.0),
+                                    color: greyColor2,
+                                  ),
+                                  padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
+                                  child: Text(widget?.demandBloc?.currentDemand?.addressDetail,
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        color: blackColor,
+                                    ),
+                                  ),
+                                ),
+                                Padding(padding: EdgeInsets.fromLTRB(15.0, 10.0, 0.0, 5.0),
+                                  child: Text("Vấn đề", style: textGrey,),
+                                ),
+                                Container(
+                                  height: 150,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                    color: greyColor2,
+                                  ),
+                                  padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
+                                  child: SingleChildScrollView(
+                                    child: Text(widget?.demandBloc?.currentDemand?.problemDescription,
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          color: blackColor,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(padding: EdgeInsets.only(bottom: 15.0)),
+                                Center(
+                                  child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: <Widget>[
+                                        Container(
+                                          decoration: BoxDecoration(
+                                              color: greyColor,
+                                              borderRadius:
+                                              new BorderRadius.circular(15.0)),
+                                          width: 152.0,
+                                          child: FlatButton.icon(
+                                            icon: new Text(''),
+                                            label: new Text(
+                                              'HỦY',
+                                              style: heading18Black,
+                                            ),
+                                            onPressed: onCancelDemand
+                                          ),
+                                        ),
+                                        Container(width: 10.0),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                              color: primaryColor,
+                                              borderRadius:
+                                              new BorderRadius.circular(15.0)),
+                                          width: 152.0,
+                                          child: FlatButton.icon(
+                                            icon: new Text(''),
+                                            label: new Text(
+                                                'HOÀN THÀNH',
+                                                style: heading18Black,
+                                              ),
+                                              onPressed: onCompleteDemand
+                                          ),
+                                        ),
+                                      ])
+
+                                ),
+
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    tapHeaderToExpand: false,
+                    hasIcon: false,
+                  ),
+                ))
+          ],
+        ),
+      ),
     );
   }
 }

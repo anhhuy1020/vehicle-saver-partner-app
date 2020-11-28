@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
+import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/screens/edit_profile/edit_profile.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 
@@ -13,10 +14,12 @@ class ProfilePage extends StatefulWidget {
 }
 class _ProfilePageState extends State<ProfilePage>{
   AuthBloc authBloc;
+  DemandBloc demandBloc;
 
   @override
   Widget build(BuildContext context) {
     authBloc = Provider.of<AuthBloc>(context);
+    demandBloc = Provider.of<DemandBloc>(context);
     return Container(
       child:NotificationListener<OverscrollIndicatorNotification>(
         onNotification: (overScroll) {
@@ -46,7 +49,7 @@ class _ProfilePageState extends State<ProfilePage>{
                                   radius: 30,
                                   backgroundColor: Colors.transparent,
                                   backgroundImage: CachedNetworkImageProvider(
-                                    "https://source.unsplash.com/300x300/?portrait",
+                                    authBloc.myInfo.avatarUrl,
                                   )
                               ),
                             ),
@@ -168,6 +171,8 @@ class _ProfilePageState extends State<ProfilePage>{
                             icon: new Text(""),
                             label: new Text('Đăng xuất', style: TextStyle(color: Colors.black),),
                             onPressed: (){
+                              demandBloc.cleanUp();
+                              authBloc.cleanUp();
                               Navigator.of(context).pushReplacementNamed(AppRoute.loginScreen);
                             },
                           ),

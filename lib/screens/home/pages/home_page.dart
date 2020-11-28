@@ -8,10 +8,10 @@ class HomePage extends StatefulWidget {
   State<StatefulWidget> createState() => _HomePageState();
 }
 class _HomePageState extends State<HomePage>{
-  String _name;
+  AuthBloc authBloc;
   @override
   Widget build(BuildContext context) {
-    _name=  Provider.of<AuthBloc>(context).myInfo.name;
+    authBloc =  Provider.of<AuthBloc>(context);
     return ListView(children: [Center(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +33,7 @@ class _HomePageState extends State<HomePage>{
                       style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
                     Text(
-                      _name,
+                      authBloc.myInfo.name,
                       style: TextStyle(color: Colors.black, fontSize: 20),
                     ),
                     SizedBox(
@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage>{
                         radius: 80,
                         backgroundColor: Colors.transparent,
                         backgroundImage: CachedNetworkImageProvider(
-                          "https://source.unsplash.com/300x300/?portrait",
+                          authBloc.myInfo.avatarUrl,
                         )
                     ),
                   ),

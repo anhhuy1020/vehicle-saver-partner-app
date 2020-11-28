@@ -11,10 +11,12 @@ Partner _$PartnerFromJson(Map<String, dynamic> json) {
     id: json['_id'] as String,
     name: json['name'] as String,
     email: json['email'] as String,
-    token: json['token'] as String,
     phone: json['phone'] as String,
+    avatarUrl: json['avatarUrl'] as String,
     address: json['address'] as String,
-  );
+  )
+    ..rating = (json['rating'] as num).toDouble()
+    ..nRating = json['nRating'] as int;
 }
 
 Map<String, dynamic> _$PartnerToJson(Partner instance) => <String, dynamic>{
@@ -23,5 +25,7 @@ Map<String, dynamic> _$PartnerToJson(Partner instance) => <String, dynamic>{
       'email': instance.email,
       'phone': instance.phone,
       'address': instance.address,
-      'token': instance.token,
+      'avatarUrl': instance.avatarUrl,
+      'rating': instance.rating,
+      'nRating': instance.nRating,
     };

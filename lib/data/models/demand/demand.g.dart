@@ -8,7 +8,7 @@ part of 'demand.dart';
 
 Demand _$DemandFromJson(Map<String, dynamic> json) {
   return Demand()
-    ..id = json['id'] as String
+    ..id = json['_id'] as String
     ..vehicleType = json['vehicleType'] as String
     ..addressDetail = json['addressDetail'] as String
     ..problemDescription = json['problemDescription'] as String
@@ -17,7 +17,10 @@ Demand _$DemandFromJson(Map<String, dynamic> json) {
         : Customer.fromJson(json['customer'] as Map<String, dynamic>)
     ..pickupLatitude = (json['pickupLatitude'] as num)?.toDouble()
     ..pickupLongitude = (json['pickupLongitude'] as num)?.toDouble()
-    ..status = _$enumDecodeNullable(_$DemandStatusEnumMap, json['status']);
+    ..status = _$enumDecodeNullable(_$DemandStatusEnumMap, json['status'])
+    ..bill = json['bill'] == null
+        ? null
+        : Bill.fromJson(json['bill'] as Map<String, dynamic>);
 }
 
 Map<String, dynamic> _$DemandToJson(Demand instance) {
@@ -29,7 +32,7 @@ Map<String, dynamic> _$DemandToJson(Demand instance) {
     }
   }
 
-  writeNotNull('id', instance.id);
+  writeNotNull('_id', instance.id);
   writeNotNull('vehicleType', instance.vehicleType);
   writeNotNull('addressDetail', instance.addressDetail);
   writeNotNull('problemDescription', instance.problemDescription);
@@ -37,6 +40,7 @@ Map<String, dynamic> _$DemandToJson(Demand instance) {
   writeNotNull('pickupLatitude', instance.pickupLatitude);
   writeNotNull('pickupLongitude', instance.pickupLongitude);
   writeNotNull('status', _$DemandStatusEnumMap[instance.status]);
+  writeNotNull('bill', instance.bill);
   return val;
 }
 

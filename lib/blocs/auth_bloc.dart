@@ -12,11 +12,19 @@ class AuthBloc extends ChangeNotifier{
   login(UserLogin userLogin, Function onSuccess, Function(String) onError) {
     socket.login(userLogin, (data) {
       print("successsss");
-      myInfo = Partner.fromJson(data);
-      onSuccess();
+      try {
+        myInfo = Partner.fromJson(data);
+        onSuccess();
+      } catch (e){
+        onError(e);
+      }
     }, (msg) {
       print("Login error: $msg");
       onError(msg);
     });
+  }
+  cleanUp(){
+    this.myInfo = null;
+    this.socket.token = "";
   }
 }

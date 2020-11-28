@@ -11,15 +11,16 @@ class Partner extends ChangeNotifier {
   String email;
   String phone;
   String address;
-  String token;
-
+  String avatarUrl;
+  double rating;
+  int nRating;
 
   Partner(
       {this.id,
         this.name,
         this.email,
-        this.token,
         this.phone,
+        this.avatarUrl,
         this.address});
 
   factory Partner.fromJson(Map<String, dynamic> json) => _$PartnerFromJson(json);
@@ -27,6 +28,6 @@ class Partner extends ChangeNotifier {
 
   @override
   String toString() {
-    return 'Customer{_id: $id, name: $name, email: $email, phone: $phone, address: $address, token: $token}';
+    return 'Partner{id: $id, name: $name, email: $email, phone: $phone, address: $address, avatarUrl: $avatarUrl, rating: $rating, nRating: $nRating}';
   }
 }

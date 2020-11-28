@@ -13,7 +13,7 @@ class IconAction extends StatelessWidget {
       onTap: onTap,
       child: Material(
         elevation: 10.0,
-        color: Colors.white,
+        color: primaryColor,
         shape: CircleBorder(),
         child: Padding(
           padding: EdgeInsets.all(2.0),

@@ -3,6 +3,8 @@ import 'package:vehicles_saver_partner/screens/home/home.dart';
 import 'package:vehicles_saver_partner/screens/listDemand/list_demand.dart';
 import 'package:vehicles_saver_partner/screens/login/login.dart';
 import 'package:vehicles_saver_partner/screens/splash/splash_screen.dart';
+import 'package:vehicles_saver_partner/screens/tracking_demand/screens/invoice/InvoiceScreen.dart';
+import 'package:vehicles_saver_partner/screens/tracking_demand/tracking_demand_screen.dart';
 
 class PageViewTransition<T> extends MaterialPageRoute<T> {
   PageViewTransition({ WidgetBuilder builder, RouteSettings settings })
@@ -23,6 +25,8 @@ class AppRoute {
   static const String homeScreen = '/home';
   static const String listDemandScreen = '/list-demand';
   static const String trackingDemandScreen = '/tracking-demand';
+  static const String cancellationReasonsScreen = '/cancellationReasonsScreen';
+  static const String invoiceScreen = '/invoiceScreen';
 
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -35,6 +39,10 @@ class AppRoute {
         return PageViewTransition(builder: (_) => HomeScreen());
       case listDemandScreen:
         return PageViewTransition(builder: (_) => ListDemandScreen());
+      case trackingDemandScreen:
+        return PageViewTransition(builder: (_) => TrackingDemandScreen());
+        case invoiceScreen:
+        return PageViewTransition(builder: (_) => InvoiceView());
       default:
         return PageViewTransition(
             builder: (_) => Scaffold(

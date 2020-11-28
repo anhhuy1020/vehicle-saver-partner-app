@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:vehicles_saver_partner/config.dart';
 import 'package:vehicles_saver_partner/data/models/map/place_model.dart';
 
@@ -9,6 +10,7 @@ class PlaceBloc with ChangeNotifier {
   Place pickupLocation;
   Place partnerLocation;
   List<Place> listPlace;
+  Position currentLocation;
 
   Stream get placeStream => locationController.stream;
 

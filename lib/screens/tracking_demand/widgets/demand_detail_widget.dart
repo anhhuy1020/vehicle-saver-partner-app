@@ -3,13 +3,13 @@ import 'package:vehicles_saver_partner/theme/style.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
-class DemandDetailWidget extends StatelessWidget {
+class HandlingDetailWidget extends StatelessWidget {
   @required final VoidCallback trackingSubmit;
   @required final PanelController panelController;
   @required final String distance;
   @required final String duration;
 
-  DemandDetailWidget({
+  HandlingDetailWidget({
     this.trackingSubmit,
     this.panelController,
     this.distance,

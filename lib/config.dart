@@ -3,6 +3,7 @@ class Config{
   static const String LANGUAGE = 'vi';
   static const String REGION = 'VN';
   static const String SERVICE_URI = 'http://10.0.2.2:3001';
+  static const String CURRENCY = "đ";
 }
 
 class SharedPreferenceKeys {

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
+import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/components/dialog/loading_dialog.dart';
-import 'package:vehicles_saver_partner/components/dialog/msg_dilog.dart';
+import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/components/ink_well_custom.dart';
 import 'package:vehicles_saver_partner/network/socket/socket_connector.dart';
 import 'package:vehicles_saver_partner/utils/validations.dart';
@@ -36,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.of(context).pushReplacementNamed(AppRoute.homeScreen);
       } , (msg) {
         LoadingDialog.hideLoadingDialog(context);
-        MsgDialog.showMsgDialog(context, "Đăng nhập", msg);
+        MsgDialog.showMsgDialog(context, "Đăng nhập", msg, null);
       });
     }
   }
@@ -44,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     authBloc = Provider.of<AuthBloc>(context);
+    DemandBloc demandBloc = Provider.of<DemandBloc>(context);
     _userLogin = new UserLogin();
     return Scaffold(
         body: SingleChildScrollView(

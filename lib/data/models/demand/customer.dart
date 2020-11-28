@@ -1,7 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 part 'customer.g.dart';
-@JsonSerializable(nullable: false)
+@JsonSerializable(nullable: true)
 class Customer {
   @JsonKey(name: '_id')
   String id;
@@ -24,4 +24,9 @@ class Customer {
   
   factory Customer.fromJson(Map<String, dynamic> json) => _$CustomerFromJson(json);
   Map<String, dynamic> toJson() => _$CustomerToJson(this);
+
+  @override
+  String toString() {
+    return 'Customer{id: $id, name: $name, email: $email, phone: $phone, avatarUrl: $avatarUrl}';
+  }
 }

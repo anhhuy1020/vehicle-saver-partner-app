@@ -18,16 +18,18 @@ class ItemDemand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      //height: 50.0,
-        color: whiteColor,
+        // color: Colors.blue,
+
         child: Column(
           mainAxisSize: MainAxisSize.max,
           children: <Widget>[
+            Padding(padding: EdgeInsets.only(top: 10.0)),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
               children: <Widget>[
                 Container(
-                  padding: EdgeInsets.only(left: 10.0,right: 10.0),
+                  padding: EdgeInsets.only(left: 10.0,right: 5.0),
                   child: CircleAvatar(
                       radius: 30,
                       backgroundColor: Colors.transparent,
@@ -36,27 +38,37 @@ class ItemDemand extends StatelessWidget {
                       )
                   ),
                 ),
-                Expanded(
-                    flex: 5,
-                    child: Container(
-                      height: 65.0,
-                      padding: EdgeInsets.all(8.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(demand.customer.name,style: textBoldBlack,overflow: TextOverflow.ellipsis,),
-                          Container(
-                              child: Text(distance,style: textStyle,overflow: TextOverflow.ellipsis,)
-                          )
-                        ],
+                   Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Container(
+                             height: 65.0,
+                              padding: EdgeInsets.all(8.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(demand.customer.name,style: textBoldBlack,overflow: TextOverflow.ellipsis,),
+                                  Container(
+                                      child: Text(distance,style: textStyle,overflow: TextOverflow.ellipsis,)
+                                  )
+                                ],
+                              ),
+                            ),
+
+                              Padding(padding: EdgeInsets.only(left: 50)),
+                              Container(
+                                  width: 30,
+                                  child:  Icon (Icons.chevron_right, size: 40,),
+                              )
+                          ],
+                        ),
                       ),
-                    )
-                ),
-                SizedBox(width: 10.0,)
+
               ],
+
             ),
-           // Divider(),
           ],
         )
     );

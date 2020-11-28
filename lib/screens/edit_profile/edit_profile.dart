@@ -183,7 +183,7 @@ class _EditProfileState extends State<EditProfile> {
                                                   radius: 30,
                                                   backgroundColor: Colors.transparent,
                                                   backgroundImage: CachedNetworkImageProvider(
-                                                    "https://source.unsplash.com/300x300/?portrait",
+                                                    authBloc.myInfo.avatarUrl,
                                                   )
                                               ),
                                             ),

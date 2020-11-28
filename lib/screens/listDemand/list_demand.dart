@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image/image.dart' as IMG;
 import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
@@ -16,12 +17,15 @@ import 'package:vehicles_saver_partner/app_router.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/place_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/loading_dialog.dart';
+import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/data/models/demand/demand.dart';
 import 'package:vehicles_saver_partner/data/models/map/mapTypeModel.dart';
 import 'package:vehicles_saver_partner/data/models/map/place_model.dart';
 import 'package:vehicles_saver_partner/screens/listDemand/item_demand.dart';
 import 'package:vehicles_saver_partner/screens/search_address/search_address_screen.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
+import 'package:vehicles_saver_partner/utils/utility.dart';
 
 class ListDemandScreen extends StatefulWidget {
   @override
@@ -41,6 +45,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
   MarkerId selectedMarker;
   BitmapDescriptor _markerIcon;
   CircleId selectedCircle;
+  double _zoom = 12.0;
 
   Map<PolylineId, Polyline> polylines = <PolylineId, Polyline>{};
   PolylineId selectedPolyline;
@@ -56,35 +61,51 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     {"id": 2, "title": "10 km"},
     {"id": 3, "title": "15 km"}
   ];
+  Timer timer;
 
   @override
   void initState() {
     super.initState();
     print("initState");
-    updateListDemand().then((_) => changeCircle(selectedDistance));
+    _getCurrentLocation().then((_) {
+      print("updateListDemand initState $currentLocation");
+
+      changeCircle(selectedDistance);
+      if (currentLocation != null) {
+        moveCameraToMyLocation();
+      }
+      updateListDemand();
+    });
   }
 
   Future updateListDemand() async {
+    print("updateListDemand");
     await checkPermission();
     if (!isEnabledLocation) {
       return;
     }
-    await _getCurrentLocation().then((_) => fetchListDemand);
 
+    fetchListDemand();
 
     const timeRequest = const Duration(seconds: 15);
     Timer.periodic(timeRequest, (Timer t) {
-      if(!demandBloc.isHavingDemand()){
-        updateListDemand();
+      timer = t;
+      if (!demandBloc.isHavingDemand()) {
+        _getCurrentLocation().then((_) {
+          fetchListDemand();
+        });
       }
     });
   }
 
   fetchListDemand() {
-    if(currentLocation != null){
-      demandBloc.fetchListDemand(currentLocation.latitude, currentLocation.longitude);
+    print("fetchListDemand");
+    if (currentLocation != null) {
+      demandBloc.fetchListDemand(
+          currentLocation.latitude, currentLocation.longitude);
     }
   }
+
   /// Get current location
   Future<void> _getCurrentLocation() async {
     print("_initCurrentLocation");
@@ -92,24 +113,21 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     currentLocation = await _locationService.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.bestForNavigation);
     print("currentLocation: $currentLocation");
-    if (currentLocation != null) {
-      moveCameraToMyLocation();
-    }
   }
 
-  void moveCameraToMyLocation() {
-    moveCameraToLocation(currentLocation?.latitude, currentLocation?.longitude);
-  }
+  moveCameraToMyLocation() {
+    print("moveCameraToMyLocation: $currentLocation");
 
-  moveCameraToLocation(double lat, double lng) {
+    if (currentLocation == null) return;
     _mapController?.animateCamera(
       CameraUpdate?.newCameraPosition(
         CameraPosition(
-          target: LatLng(lat, lng),
-          zoom: 14.0,
+          target: LatLng(currentLocation?.latitude, currentLocation?.longitude),
+          zoom: _zoom,
         ),
       ),
     );
+    print("moveCameraToMyLocation 2");
   }
 
   Future<void> checkPermission() async {
@@ -120,14 +138,15 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     this._mapController = controller;
     _mapController
         ?.animateCamera(CameraUpdate?.newCameraPosition(CameraPosition(
-      target: LatLng(currentLocation.latitude, currentLocation.longitude),
+      target: LatLng(currentLocation != null ? currentLocation.latitude : 0.0,
+          currentLocation != null ? currentLocation.longitude : 0.0),
       zoom: 12,
     )));
     _addCircle();
   }
 
   String calDistanceStrFromCurLocation(Demand demand) {
-    double distance = calculateDistance(
+    double distance = Utility.calculateDistance(
         currentLocation.latitude,
         currentLocation.longitude,
         demand.pickupLatitude,
@@ -135,18 +154,13 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     return distance.toStringAsFixed(2);
   }
 
-  double calculateDistance(lat1, lng1, lat2, lng2) {
-    var p = 0.017453292519943295;
-    var c = cos;
-    var a = 0.5 -
-        c((lat2 - lat1) * p) / 2 +
-        c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
-    return 12742 * asin(sqrt(a));
-  }
 
   @override
   void dispose() {
     super.dispose();
+    if(this.timer != null){
+      timer.cancel();
+    }
   }
 
   Future<void> _createMarkerImageFromAsset(BuildContext context) async {
@@ -194,8 +208,8 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
       String markerIdVal, String avatarUrl, double lat, double lng) async {
     final MarkerId markerId = MarkerId(markerIdVal);
     print("addmarker: $markerIdVal");
-    final size = Size(120, 120);
-    final double borderStroke = 20;
+    final size = Size(60, 60);
+    final double borderStroke = 10;
 
     //get image from internet or cache
     final File markerImageFile =
@@ -255,12 +269,14 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
   }
 
   void _addCircle() {
+    if (currentLocation == null) return;
     final int circleCount = circles.length;
     if (circleCount == 12) {
       return;
     }
     final String circleIdVal = 'circle_id';
     final CircleId circleId = CircleId(circleIdVal);
+    print("_addCircle $circleIdVal, $circleId, $circles");
 
     final Circle circle = Circle(
       circleId: circleId,
@@ -286,25 +302,28 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     if (selectedCircle == "1") {
       setState(() {
         _radius = 5000;
-        _moveCamera(11.5);
+        _zoom = 11.5;
+        _moveCamera(_zoom);
       });
     }
     if (selectedCircle == "2") {
       setState(() {
         _radius = 10000;
-        _moveCamera(11.2);
+        _zoom = 11.2;
+        _moveCamera(_zoom);
       });
     }
     if (selectedCircle == "3") {
       setState(() {
         _radius = 15000;
-        _moveCamera(10.5);
+        _zoom = 10.5;
+        _moveCamera(_zoom);
       });
     }
     _addCircle();
     for (int i = 0; i < demandBloc.availableDemands.length; i++) {
       Demand demand = demandBloc.availableDemands[i];
-      distance = calculateDistance(
+      distance = Utility.calculateDistance(
           currentLocation.latitude,
           currentLocation.longitude,
           demand.pickupLatitude,
@@ -335,13 +354,104 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     );
   }
 
-  _selectDemand(int index) {
-    print("select demand: $index");
+  _selectDemand(Demand demand) {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0)),
+              content: Container(
+                  color: whiteColor,
+                  width: 300,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Container(
+                        child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.transparent,
+                            backgroundImage: CachedNetworkImageProvider(
+                              demand.customer.avatarUrl,
+                            )),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0, top:5.0),
+                        child: Text(
+                          demand.customer.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(calDistanceStrFromCurLocation(
+                            demand) +
+                            " km"),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(
+                          demand.addressDetail,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(
+                          demand.vehicleType,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0),
+                        child: Text(
+                          demand.problemDescription,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      Container(
+                        width: 200,
+                        height: 40,
+                        child: RaisedButton(
+                          child: new Text(
+                            'Chấp nhận',
+                            style: TextStyle(color: blackColor),
+                          ),
+                          color: primaryColor,
+                          shape: new RoundedRectangleBorder(
+                            borderRadius: new BorderRadius.circular(15.0),
+                          ),
+                          onPressed: () {
+                            acceptDemand(demand);
+                          },
+                        ),
+                      ),
+                    ],
+                  )),
+            ));
+  }
+
+  acceptDemand(Demand demand){
+    LoadingDialog.showLoadingDialog(context, "Loading...");
+    demandBloc.acceptDemand(demand.id, (){
+      LoadingDialog.hideLoadingDialog(context);
+      Navigator.of(context).pop();
+      Navigator.of(context).pushReplacementNamed(AppRoute.trackingDemandScreen);
+    },
+      (msg){
+        LoadingDialog.hideLoadingDialog(context);
+        Navigator.of(context).pop();
+        MsgDialog.showMsgDialog(context, "Chấp nhận yêu cầu", msg, null);
+      });
   }
 
   @override
   Widget build(BuildContext context) {
     demandBloc = Provider.of<DemandBloc>(context);
+    if(demandBloc.isHavingDemand()){
+      Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.trackingDemandScreen));
+    }
     _createMarkerImageFromAsset(context);
     return new Scaffold(
       key: _scaffoldKey,
@@ -353,26 +463,30 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                 width: double.infinity,
                 color: primaryColor,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: <Widget>[
-                      Text("Danh sách yêu cầu", style: headingBlack,)
-                    ]
-                )
-            ),
-            SingleChildScrollView(
-              child: Expanded(
+                      Text(
+                        "Danh sách yêu cầu",
+                        style: headingBlack,
+                      )
+                    ])),
+            Expanded(
+              child: SingleChildScrollView(
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: demandBloc.availableDemands.length,
                   itemBuilder: (context, index) {
                     return GestureDetector(
                         onTap: () {
-                          _selectDemand(index);
+                          _selectDemand(demandBloc.availableDemands[index]);
                         },
-                        child: ItemDemand(
-                            demand: demandBloc.availableDemands[index],
-                            distance: calDistanceStrFromCurLocation(
-                                demandBloc.availableDemands[index])));
+                        child: Container(
+                          child: ItemDemand(
+                              demand: demandBloc.availableDemands[index],
+                              distance: calDistanceStrFromCurLocation(
+                                      demandBloc.availableDemands[index]) +
+                                  " km"),
+                        ));
                   },
                   separatorBuilder: (context, index) => Divider(
                     height: 1,
@@ -384,63 +498,119 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
           ],
         ),
       ),
-      body: new Container(
-        color: Colors.white,
-        child: SingleChildScrollView(
-            child: new Stack(
-          children: <Widget>[
-            new Column(
-              children: <Widget>[
-                SizedBox(
-                    height: MediaQuery.of(context).size.height,
-                    child: GoogleMap(
-                      circles: Set<Circle>.of(circles.values),
-                      onMapCreated: _onMapCreated,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: true,
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(
-                            currentLocation != null
-                                ? currentLocation.latitude
-                                : 0.0,
-                            currentLocation != null
-                                ? currentLocation.longitude
-                                : 0.0),
-                        zoom: 12,
+      body: Stack(
+        children: [
+          Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+              child: new Stack(
+            children: <Widget>[
+              new Column(
+                children: <Widget>[
+                  SizedBox(
+                      height: MediaQuery.of(context).size.height,
+                      child: GoogleMap(
+                        circles: Set<Circle>.of(circles.values),
+                        onMapCreated: _onMapCreated,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(
+                              currentLocation != null
+                                  ? currentLocation.latitude
+                                  : 0.0,
+                              currentLocation != null
+                                  ? currentLocation.longitude
+                                  : 0.0),
+                          zoom: 12,
+                        ),
+                        markers: Set<Marker>.of(markers.values),
+                      )),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                top: 50,
+                right: 0,
+                child: Center(
+                  child: getListOptionDistance(),
+                ),
+              ),
+              Positioned(
+                  top: MediaQuery.of(context).size.height / 2,
+                  right: 0,
+                  child: Container(
+                    width: 35,
+                    height: 35,
+                    decoration: BoxDecoration(
+                        color: primaryColor,
+                        borderRadius:
+                            BorderRadius.horizontal(left: Radius.circular(5.0))),
+                    child: GestureDetector(
+                      onTap: _scaffoldKey?.currentState?.openEndDrawer,
+                      child: Icon(
+                        Icons.arrow_back_ios_sharp,
+                        size: 20,
+                        color: blackColor,
                       ),
-                      markers: Set<Marker>.of(markers.values),
-                    )),
+                    ),
+                  )),
+            ],
+          )),
+        ),
+          Positioned(
+            left: 18,
+            top: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              children: <Widget>[
+                AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0.0,
+                  centerTitle: true,
+                  leading: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pushReplacementNamed(
+                            AppRoute.homeScreen);
+                      },
+                      child: Container(
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30.0),
+                              color: Colors.white
+                          ),
+                          child: Icon(Icons.arrow_back_ios, color: blackColor,)
+                      )
+                  ),
+                ),
               ],
             ),
-            Positioned(
-              left: 0,
-              top: 50,
-              right: 0,
-              child: Center(
-                child: getListOptionDistance(),
-              ),
-            ),
-            Positioned(
-                top: MediaQuery.of(context).size.height / 2,
-                right: 0,
-                child: Container(
-                  width: 35,
-                  height: 35,
-                  decoration: BoxDecoration(
-                      color: primaryColor,
-                      borderRadius:
-                          BorderRadius.horizontal(left: Radius.circular(5.0))),
-                  child: GestureDetector(
-                    onTap: _scaffoldKey?.currentState?.openEndDrawer,
+          ),
+          Positioned(
+            bottom: 120,
+            right: 10,
+            child: Container(
+                height: 40.0,
+                width: 40.0,
+                child: GestureDetector(
+                  onTap: moveCameraToMyLocation,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(100.0),
+                      ),
+                    ),
                     child: Icon(
-                      Icons.arrow_back_ios_sharp,
-                      size: 20,
+                      Icons.my_location,
+                      size: 20.0,
                       color: blackColor,
                     ),
                   ),
-                )),
-          ],
-        )),
+                ),
+              ),
+            ),
+        ]
       ),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MsgDialog {
-  static void showMsgDialog(BuildContext context, String title, String msg) {
+  static void showMsgDialog(BuildContext context, String title, String msg, Function callback) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -12,6 +12,7 @@ class MsgDialog {
                 child: Text("OK"),
                 onPressed: () {
                   Navigator.of(context).pop(MsgDialog);
+                  if(callback != null) callback();
                 },
               ),
             ],

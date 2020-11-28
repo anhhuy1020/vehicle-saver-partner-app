@@ -31,7 +31,7 @@ class APIs {
     }
   }
 
-  Future<JsonMessage> getRoutes({@required GetRoutesRequestModel getRoutesRequest}) async {
+  static Future<JsonMessage> getRoutes({@required GetRoutesRequestModel getRoutesRequest}) async {
     return await _gmapClient.fetch(
       url: 'https://maps.googleapis.com/maps/api/directions/json',
       key: Config.API_KEY,

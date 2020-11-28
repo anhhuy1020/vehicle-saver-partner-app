@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:adhara_socket_io/adhara_socket_io.dart';
 import 'package:vehicles_saver_partner/config.dart';
 import 'package:vehicles_saver_partner/data/models/auth/user_login.dart';
+import 'package:vehicles_saver_partner/data/models/bill/bill.dart';
+import 'package:vehicles_saver_partner/data/models/bill/bill_item.dart';
 import 'package:vehicles_saver_partner/network/socket/socket_error.dart';
 import 'package:vehicles_saver_partner/network/socket/socket_event.dart';
 
@@ -13,8 +15,10 @@ class SocketConnector{
   Function onLogin;
   Function onAcceptDemand;
   Function onCancelDemand;
-  Function onUpdateListDemand;
-  Function onUpdateCurrentDemand;
+  Function onLoginSuccess = (data) {print ("onLoginSuccess $data");};
+  Function onUpdateListDemand = (data) {print ("onUpdateListDemand $data");};
+  Function onUpdateCurrentDemand = (data) {print ("onUpdateCurrentDemand $data");};
+  Function onInvoice;
   String token;
 
 
@@ -67,6 +71,10 @@ class SocketConnector{
       print("Disconnect $data");
     });
 
+    socket.on(SocketEvent.FETCH_LIST_DEMAND, onUpdateListDemand);
+
+    socket.on(SocketEvent.FETCH_CURRENT_DEMAND, onUpdateCurrentDemand);
+
     socket.connect();
   }
 
@@ -79,31 +87,19 @@ class SocketConnector{
   }
 
   listenUpdateCurrentDemand(Function listener){
-    socket.isConnected().then((check) {
-      if(check) {
-        if(onUpdateCurrentDemand != null){
-          socket.off(SocketEvent.FETCH_CURRENT_DEMAND, onUpdateCurrentDemand);
-        }
-        onUpdateCurrentDemand = listener;
-        socket.on(SocketEvent.FETCH_CURRENT_DEMAND, onUpdateCurrentDemand);
-      }
-    });
+    onUpdateCurrentDemand = listener;
   }
-  
+
+  listenLoginSuccess(Function listener){
+    onLoginSuccess = listener;
+  }
+
   listenUpdateListDemand(Function listener){
-    print("listenUpdateDemand");
-    socket.isConnected().then((check) {
-      if(check) {
-        if(onUpdateListDemand != null){
-          socket.off(SocketEvent.FETCH_LIST_DEMAND, onUpdateListDemand);
-        }
-        onUpdateListDemand = listener;
-        socket.on(SocketEvent.FETCH_LIST_DEMAND, onUpdateListDemand);
-      }
-    });
+    onUpdateListDemand = listener;
   }
 
   fetchCurrentDemand () async {
+    print("fetchCurrentDemand!");
     checkConnection(() {
       socket.emit(SocketEvent.FETCH_CURRENT_DEMAND, [token]);
     },  (msg) => print("fetchCurrentDemand: $msg")
@@ -131,6 +127,7 @@ class SocketConnector{
         print(res);
         if (res['errorCode'] == SocketError.SUCCESS) {
           token = res['body']['token'];
+          onLoginSuccess(res['body']);
           onSuccess(res['body']['partner']);
         } else {
           onError(res['body']["errorMessage"]);
@@ -138,8 +135,52 @@ class SocketConnector{
         socket.off(SocketEvent.LOGIN, onLogin);
 
       };
+      socket.off(SocketEvent.LOGIN);
       socket.on(SocketEvent.LOGIN, onLogin);
       socket.emit(SocketEvent.LOGIN, [loginData.toJson()]);
+    },  onError
+    );
+  }
+
+  acceptDemand (String demandId, Function onSuccess, Function onError) async {
+    checkConnection(() {
+      this.onAcceptDemand = (res) {
+        print(res);
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          onSuccess(res);
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+        socket.off(SocketEvent.ACCEPT_DEMAND, onAcceptDemand);
+      };
+      socket.off(SocketEvent.ACCEPT_DEMAND);
+      socket.on(SocketEvent.ACCEPT_DEMAND, onAcceptDemand);
+      socket.emit(SocketEvent.ACCEPT_DEMAND, [{"demandId": demandId}, token]);
+    },  onError
+    );
+  }
+
+  invoice (List<BillItem> billItems, Function onSuccess, Function onError) async {
+    checkConnection(() {
+      this.onInvoice = (res) {
+        print("invoice res = $res");
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          onSuccess(res);
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+        socket.off(SocketEvent.INVOICE, onInvoice);
+      };
+
+      List<Map> req = [];
+      for (int i = 0; i < billItems.length; i++){
+        req.add(billItems[i].toJson());
+      }
+      print("req == $req");
+
+      socket.off(SocketEvent.INVOICE);
+      socket.on(SocketEvent.INVOICE, onAcceptDemand);
+      socket.emit(SocketEvent.INVOICE, [req, token]);
     },  onError
     );
   }

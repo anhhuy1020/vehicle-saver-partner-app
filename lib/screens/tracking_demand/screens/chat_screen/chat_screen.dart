@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+import 'package:vehicles_saver_partner/app_router.dart';
+import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 
 import 'bubble_chat_widget.dart';
@@ -9,6 +12,10 @@ class ChatWidget extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) {
+    DemandBloc demandBloc = Provider.of<DemandBloc>(context);
+    if(!demandBloc.isHavingDemand()){
+      Future.microtask(() => Navigator.of(context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
+    }
     return Container(
       child:  Column(
         crossAxisAlignment: CrossAxisAlignment.end,
