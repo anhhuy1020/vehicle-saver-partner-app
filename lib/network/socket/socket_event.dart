@@ -6,4 +6,5 @@ class SocketEvent {
   static const String CANCEL_DEMAND = "cancel_demand";
   static const String ACCEPT_DEMAND = "accept_demand";
   static const String INVOICE = "invoice";
+  static const String CHAT = "chat";
 }

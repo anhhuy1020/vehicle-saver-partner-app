@@ -9,8 +9,10 @@ class BubbleChatWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isMe ? Color(0xFFF7F8F9) : Color(0xFFFFD428);
-    final align = isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+    final mainAlign = isMe ? MainAxisAlignment.end : MainAxisAlignment.start;
+    final crossAlign = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final textAlign = isMe ? TextAlign.right : TextAlign.left;
+    final bg = isMe ?Color(0xFFFFD428): Color(0xFFF7F8F9) ;
     final icon = delivered ? Icons.done_all : Icons.done;
     final radius = isMe
 
@@ -24,55 +26,57 @@ class BubbleChatWidget extends StatelessWidget {
       bottomLeft: Radius.circular(5.0),
       bottomRight: Radius.circular(10.0),
     );
-    return Column(
-      crossAxisAlignment: align,
-      children: <Widget>[
-        Container(
-          margin: const EdgeInsets.all(3.0),
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                  blurRadius: .5,
-                  spreadRadius: 1.0,
-                  color: Colors.black.withOpacity(.12))
-            ],
-            color: bg,
-            borderRadius: radius,
-          ),
-          child: Stack(
-            children: <Widget>[
-              Padding(
-                padding: EdgeInsets.only(right: 48.0),
-                child: Text(message,
-                  style: TextStyle(
-                    color: isMe ? Color(0xFF3E4958) : Colors.white
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0.0,
-                right: 0.0,
-                child: Row(
+    return Row(
+        mainAxisAlignment: mainAlign,
+        //this will determine if the message should be displayed left or right
+        children: [
+          Flexible(
+            //Wrapping the container with flexible widget
+            child: Container(
+                padding: EdgeInsets.all(8.0),
+                margin: EdgeInsets.all(4.0),
+                decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.all(Radius.circular(8.0))),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: crossAlign,
                   children: <Widget>[
-                    Text(time,
-                        style: TextStyle(
-                          color: Colors.black38,
-                          fontSize: 10.0,
-                        )),
-                    SizedBox(width: 3.0),
-                    Icon(
-                      icon,
-                      size: 12.0,
-                      color: Colors.black38,
-                    )
+                    Flexible(
+                      //We only want to wrap the text message with flexible widget
+                        child: Container(
+                            child: Text(
+                              message,
+                              textAlign: textAlign,
+                            ),
+                        )
+                    ),
+                    SizedBox(
+                      width: 8.0,
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: mainAlign,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(top: 3.0),
+                          child: Text(
+                            time,
+                            style: TextStyle(fontSize: 10.0, color: Colors.grey),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 3.0,
+                        ),
+                        Icon(icon, color: Colors.grey, size: 15,)
+                      ],
+                    ),
                   ],
-                ),
-              )
-            ],
-          ),
-        )
-      ],
+                )),
+
+          )
+
+        ]
     );
   }
 }

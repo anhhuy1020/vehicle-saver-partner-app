@@ -18,6 +18,10 @@ Demand _$DemandFromJson(Map<String, dynamic> json) {
     ..pickupLatitude = (json['pickupLatitude'] as num)?.toDouble()
     ..pickupLongitude = (json['pickupLongitude'] as num)?.toDouble()
     ..status = _$enumDecodeNullable(_$DemandStatusEnumMap, json['status'])
+    ..messages = (json['messages'] as List)
+        ?.map((e) =>
+            e == null ? null : Message.fromJson(e as Map<String, dynamic>))
+        ?.toList()
     ..bill = json['bill'] == null
         ? null
         : Bill.fromJson(json['bill'] as Map<String, dynamic>);
@@ -40,6 +44,7 @@ Map<String, dynamic> _$DemandToJson(Demand instance) {
   writeNotNull('pickupLatitude', instance.pickupLatitude);
   writeNotNull('pickupLongitude', instance.pickupLongitude);
   writeNotNull('status', _$DemandStatusEnumMap[instance.status]);
+  writeNotNull('messages', instance.messages);
   writeNotNull('bill', instance.bill);
   return val;
 }

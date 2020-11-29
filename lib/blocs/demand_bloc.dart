@@ -14,6 +14,8 @@ class DemandBloc extends ChangeNotifier {
 
   List<Demand> availableDemands = [];
 
+  Function onUpdateListDemand = (data) => print("onUpdateListDemand: $data");
+  
   SocketConnector socket;
 
   bool initSocketConnect = false;
@@ -24,6 +26,10 @@ class DemandBloc extends ChangeNotifier {
     socket.listenUpdateCurrentDemand(updateCurrentDemand);
     socket.listenUpdateListDemand(updateListDemand);
   }
+  
+  listenUpdateListDemand(Function listener){
+    this.onUpdateListDemand = listener;
+  }
 
   void onLoginSuccess (data){
     try {
@@ -32,7 +38,7 @@ class DemandBloc extends ChangeNotifier {
           this.currentDemand = Demand.fromJson(data["currentDemand"]);
         }
         if (data["demandHistory"] != null){
-          print('data["demandHistory"] = ${data["demandHistory"]}');
+          print('onLoginSuccess data["demandHistory"] = ${data["demandHistory"]}');
 
           var list = <Demand>[];
           for (Map demand in data["demandHistory"]) {
@@ -41,13 +47,13 @@ class DemandBloc extends ChangeNotifier {
           this.demandHistory = list;
         }
       } catch (e) {
-        print("updateCurrentDemand exception: $e");
+        print("onLoginSuccess exception: $e");
 
         this.currentDemand = null;
         this.demandHistory = [];
       }
-    print("updateCurrentDemand end ${this.currentDemand}");
-    print("updateCurrentDemand end ${this.demandHistory}");
+    print("onLoginSuccess end ${this.currentDemand}");
+    print("onLoginSuccess end ${this.demandHistory}");
   }
 
   void updateCurrentDemand(data) {
@@ -87,7 +93,7 @@ class DemandBloc extends ChangeNotifier {
       this.availableDemands = [];
     }
     print("updateListDemand 2 ${this.availableDemands}");
-
+    onUpdateListDemand(availableDemands);
     notifyListeners();
   }
 
@@ -95,13 +101,15 @@ class DemandBloc extends ChangeNotifier {
     return currentDemand != null;
   }
 
-  void fetchListDemand(double latitude, double longitude) {
+  void fetchListDemand(double latitude, double longitude, Function callback) {
     Map req = {"latitude": latitude, "longitude": longitude};
     print("fetchListDemand: $req");
+    this.onUpdateListDemand = callback;
     socket.fetchListDemand(req);
   }
 
   void acceptDemand(String id, Function onSuccess, Function onError) {
+    print("acceptDemand ");
     socket.acceptDemand(id, (data) {
       print("acceptDemand successsss");
       try {
@@ -113,6 +121,15 @@ class DemandBloc extends ChangeNotifier {
     }, (msg) {
       print("acceptDemand error: $msg");
       onError(msg);
+    });
+  }
+  void sendMessage (String text, Function onSuccess, Function onError) {
+    socket.sendMessage(text, () {
+      print("sendMessage:");
+      onSuccess();
+    }, (msg) {
+      print("create demand error: $msg");
+      onError.call(msg);
     });
   }
 

@@ -15,6 +15,7 @@ class SocketConnector{
   Function onLogin;
   Function onAcceptDemand;
   Function onCancelDemand;
+  Function onChat;
   Function onLoginSuccess = (data) {print ("onLoginSuccess $data");};
   Function onUpdateListDemand = (data) {print ("onUpdateListDemand $data");};
   Function onUpdateCurrentDemand = (data) {print ("onUpdateCurrentDemand $data");};
@@ -184,6 +185,24 @@ class SocketConnector{
     },  onError
     );
   }
+  sendMessage (String text, Function onSuccess, Function onError) {
+    checkConnection(() {
+      onChat = (res) {
+        print("onChat");
+        print(res);
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          onSuccess();
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+      };
+      socket.off(SocketEvent.CHAT);
+      socket.on(SocketEvent.CHAT, onChat);
+      socket.emit(SocketEvent.CHAT, [text, token]);
+    },  onError
+    );
+  }
+
 }
 
 enum ConnectionStatus{

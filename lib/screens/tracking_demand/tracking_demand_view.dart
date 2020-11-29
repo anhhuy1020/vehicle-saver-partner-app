@@ -584,6 +584,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
                                     child: Text("Địa chỉ", style: textGrey,)
                                   ),
                                 Container(
+                                  width: double.infinity,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(15.0),
                                     color: greyColor2,
@@ -601,6 +602,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
                                 ),
                                 Container(
                                   height: 150,
+                                  width: double.infinity,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20.0),
                                     color: greyColor2,

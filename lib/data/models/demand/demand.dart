@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:vehicles_saver_partner/data/models/bill/bill.dart';
+import 'package:vehicles_saver_partner/data/models/demand/message.dart';
 import 'package:vehicles_saver_partner/data/models/map/place_model.dart';
 
 import 'customer.dart';
@@ -17,6 +18,7 @@ class Demand{
   double pickupLatitude;
   double pickupLongitude;
   DemandStatus status;
+  List<Message> messages = [];
   Bill bill;
 
   Demand();

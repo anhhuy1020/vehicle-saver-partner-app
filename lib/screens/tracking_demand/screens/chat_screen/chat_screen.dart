@@ -2,35 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/app_router.dart';
+import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 
 import 'bubble_chat_widget.dart';
 
-class ChatWidget extends StatelessWidget {
-  ChatWidget({this.text});
-  final String text;
-  @override
-  Widget build(BuildContext context) {
-    DemandBloc demandBloc = Provider.of<DemandBloc>(context);
-    if(!demandBloc.isHavingDemand()){
-      Future.microtask(() => Navigator.of(context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
-    }
-    return Container(
-      child:  Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          BubbleChatWidget(
-            message: text,
-            time: '12:00',
-            delivered: true,
-            isMe: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
+
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -38,17 +17,18 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final List<ChatWidget> _messages = <ChatWidget>[];
   final TextEditingController _textController = TextEditingController();
-
+  DemandBloc demandBloc;
+  AuthBloc authBloc;
   void _handleSubmitted(String text) {
     _textController.clear();
-    ChatWidget message = ChatWidget(
-      text: text,
+
+    demandBloc.sendMessage(text, (){
+      print("sendMessage success");
+    }, (msg){
+      MsgDialog.showMsgDialog(context, "Nhắn tin", msg, null);
+    }
     );
-    setState(() {
-      _messages.insert(0, message);
-    });
   }
 
   Widget _buildTextComposer() {
@@ -80,9 +60,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget build(BuildContext context) {
+    demandBloc = Provider.of<DemandBloc>(context);
+    authBloc = Provider.of<AuthBloc>(context);
+    if(!demandBloc.isHavingDemand()){
+      Future.microtask(() =>  Navigator.of(context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
+    }
     return Scaffold(
       appBar: AppBar(
-        title: Text("Message"),
+        title: Text("Tin nhắn"),
         leading: IconButton(
           icon: Icon(Icons.clear,color: whiteColor,
           ),
@@ -97,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
             children: <Widget>[
               Flexible(
-                child: _messages.isNotEmpty ?
+                child: demandBloc?.currentDemand?.messages?.isNotEmpty?
                 GestureDetector(
                     onHorizontalDragDown: (_){
                       FocusScope.of(context).requestFocus(new FocusNode());
@@ -105,8 +90,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: ListView.builder(
                       padding: EdgeInsets.all(8.0),
                       reverse: true,
-                      itemCount: _messages.length,
-                      itemBuilder: (_, int index) => _messages[index],
+                      itemCount: demandBloc?.currentDemand?.messages?.length,
+                      itemBuilder: (_, int index) => Container(
+                        child:  Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: <Widget>[
+                            BubbleChatWidget(
+                              message: demandBloc?.currentDemand?.messages[demandBloc.currentDemand.messages.length - 1 - index]?.content,
+                              time: demandBloc?.currentDemand?.messages[demandBloc.currentDemand.messages.length  - 1- index]?.parseTime(),
+                              delivered: true,
+                              isMe: demandBloc?.currentDemand?.messages[demandBloc.currentDemand.messages.length  - 1- index].userId == authBloc?.myInfo?.id,
+                            ),
+                          ],
+                        ),
+                      ),
                     )
                 ) : Center(
                   child: Container(
@@ -128,4 +125,5 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
 

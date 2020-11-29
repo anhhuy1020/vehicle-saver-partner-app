@@ -266,7 +266,7 @@ class InvoiceState extends State<InvoiceView> {
                               radius: 30,
                               backgroundColor: Colors.transparent,
                               backgroundImage: CachedNetworkImageProvider(
-                                demandBloc.currentDemand.customer.avatarUrl,
+                                demandBloc?.currentDemand?.customer?.avatarUrl,
                               )),
                         ),
                       ),
@@ -274,7 +274,7 @@ class InvoiceState extends State<InvoiceView> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0, bottom: 10.0),
                       child: Text(
-                        demandBloc.currentDemand.customer.name,
+                        demandBloc?.currentDemand?.customer?.name,
                         style: heading18Black,
                       ),
                     ),

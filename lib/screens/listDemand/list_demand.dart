@@ -102,7 +102,10 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     print("fetchListDemand");
     if (currentLocation != null) {
       demandBloc.fetchListDemand(
-          currentLocation.latitude, currentLocation.longitude);
+          currentLocation.latitude, currentLocation.longitude, (){
+            print("clear marker");
+          this.markers.clear();
+      });
     }
   }
 
@@ -452,7 +455,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     if(demandBloc.isHavingDemand()){
       Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.trackingDemandScreen));
     }
-    _createMarkerImageFromAsset(context);
+    print("build ${demandBloc.availableDemands}");
     return new Scaffold(
       key: _scaffoldKey,
       endDrawer: Drawer(
