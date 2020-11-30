@@ -475,7 +475,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                         style: headingBlack,
                       )
                     ])),
-            Expanded(
+            demandBloc.availableDemands.length > 0? Expanded(
               child: SingleChildScrollView(
                 child: ListView.separated(
                   shrinkWrap: true,
@@ -499,7 +499,8 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                   ),
                 ),
               ),
-            ),
+            )
+            : Container(padding:EdgeInsets.only(top: 300),child: (Text("Danh sách Trống", style: TextStyle(fontSize: 20),))),
           ],
         ),
       ),

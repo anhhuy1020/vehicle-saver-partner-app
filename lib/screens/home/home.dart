@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/app_router.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/network/socket/socket_connector.dart';
+import 'package:vehicles_saver_partner/screens/home/pages/history/history_page.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/profile_page.dart';
-import 'package:vehicles_saver_partner/screens/home/pages/history_page.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/home_page.dart';
 import 'package:vehicles_saver_partner/screens/home/pages/notifications_page.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
@@ -32,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen>{
   }
 
   void _onIconTapped(int index) {
-    print('_onIconTapped :$index');
     if (index == 2) {
       demandBloc.isHavingDemand()?
       Navigator.of(context).pushNamed(AppRoute.trackingDemandScreen):
@@ -42,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen>{
         _selectedIndex = index < 2 ? index : index - 1;
       });
     }
-    print("_selectedIndex: $_selectedIndex");
   }
 
   @override

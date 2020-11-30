@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/app_router.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/loading.dart';
 import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 
@@ -64,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
     authBloc = Provider.of<AuthBloc>(context);
     if(!demandBloc.isHavingDemand()){
       Future.microtask(() =>  Navigator.of(context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
+      return LoadingWidget('');
     }
     return Scaffold(
       appBar: AppBar(

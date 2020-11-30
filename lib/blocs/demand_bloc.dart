@@ -37,11 +37,11 @@ class DemandBloc extends ChangeNotifier {
           print('data["currentDemand"] = ${data["currentDemand"]}');
           this.currentDemand = Demand.fromJson(data["currentDemand"]);
         }
-        if (data["demandHistory"] != null){
-          print('onLoginSuccess data["demandHistory"] = ${data["demandHistory"]}');
+        if (data["history"] != null){
+          print('onLoginSuccess data["history"] = ${data["history"]}');
 
           var list = <Demand>[];
-          for (Map demand in data["demandHistory"]) {
+          for (Map demand in data["history"]) {
             list.add(Demand.fromJson(demand));
           }
           this.demandHistory = list;
@@ -52,8 +52,8 @@ class DemandBloc extends ChangeNotifier {
         this.currentDemand = null;
         this.demandHistory = [];
       }
-    print("onLoginSuccess end ${this.currentDemand}");
-    print("onLoginSuccess end ${this.demandHistory}");
+    print("onLoginSuccess currentDemand ${this.currentDemand}");
+    print("onLoginSuccess history ${this.demandHistory}");
   }
 
   void updateCurrentDemand(data) {

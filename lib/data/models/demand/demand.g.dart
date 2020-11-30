@@ -24,7 +24,13 @@ Demand _$DemandFromJson(Map<String, dynamic> json) {
         ?.toList()
     ..bill = json['bill'] == null
         ? null
-        : Bill.fromJson(json['bill'] as Map<String, dynamic>);
+        : Bill.fromJson(json['bill'] as Map<String, dynamic>)
+    ..createdDate = json['createdDate'] == null
+        ? null
+        : DateTime.parse(json['createdDate'] as String)
+    ..completedDate = json['completedDate'] == null
+        ? null
+        : DateTime.parse(json['completedDate'] as String);
 }
 
 Map<String, dynamic> _$DemandToJson(Demand instance) {
@@ -46,6 +52,8 @@ Map<String, dynamic> _$DemandToJson(Demand instance) {
   writeNotNull('status', _$DemandStatusEnumMap[instance.status]);
   writeNotNull('messages', instance.messages);
   writeNotNull('bill', instance.bill);
+  writeNotNull('createdDate', instance.createdDate?.toIso8601String());
+  writeNotNull('completedDate', instance.completedDate?.toIso8601String());
   return val;
 }
 

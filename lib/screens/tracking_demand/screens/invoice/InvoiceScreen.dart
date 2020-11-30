@@ -10,6 +10,7 @@ import 'package:vehicles_saver_partner/app_router.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/place_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/loading.dart';
 import 'package:vehicles_saver_partner/components/dialog/loading_dialog.dart';
 import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/components/ink_well_custom.dart';
@@ -19,6 +20,7 @@ import 'package:vehicles_saver_partner/data/models/bill/bill.dart';
 import 'package:vehicles_saver_partner/data/models/bill/bill_item.dart';
 import 'package:vehicles_saver_partner/data/models/demand/demand.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
+import 'package:vehicles_saver_partner/utils/utility.dart';
 
 class InvoiceView extends StatefulWidget {
   @override
@@ -177,9 +179,8 @@ class InvoiceState extends State<InvoiceView> {
     if(demandBloc.isStatus(DemandStatus.PAYING)){
       total += demandBloc.currentDemand.bill.fee;
     }
-    print(
-        "total cost = ${formatter.format(1234567890) + "    " + total.toString()}");
-    return formatter.format(total) + " " + Config.CURRENCY;
+
+    return Utility.convertCurrency(total);
   }
 
   @override
@@ -193,6 +194,7 @@ class InvoiceState extends State<InvoiceView> {
     }
     if(!demandBloc.isHavingDemand()){
       Future.microtask(() => Navigator.of(context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
+      return LoadingWidget('');
     }
     final screenSize = MediaQuery.of(context).size;
     return Scaffold(
@@ -406,10 +408,7 @@ class InvoiceState extends State<InvoiceView> {
                                       Container(
                                         width:80,
                                         child: Text(
-                                          formatter
-                                                  .format(billItems[index].cost) +
-                                              " " +
-                                              Config.CURRENCY,
+                                          Utility.convertCurrency(billItems[index].cost),
                                           textAlign: TextAlign.right,
                                           style: textStyle,
                                         ),
@@ -440,7 +439,7 @@ class InvoiceState extends State<InvoiceView> {
                                 Text(
                                     "Phí",
                                     style: textStyle),
-                                Text(formatter.format(demandBloc.currentDemand.bill.fee) + " " + Config.CURRENCY,
+                                Text(Utility.convertCurrency(demandBloc.currentDemand.bill.fee),
                                     style: textStyle),
                               ],
                             ),

@@ -20,15 +20,29 @@ class Demand{
   DemandStatus status;
   List<Message> messages = [];
   Bill bill;
+  DateTime createdDate;
+  DateTime completedDate;
 
   Demand();
+
+  double calTotalCost(){
+    if(bill == null){
+      return 0;
+    }
+    double total = 0;
+    for (int i = 0; i< bill.items.length; i++){
+      total += bill.items[i].cost;
+    }
+    total += bill.fee;
+    return total;
+  }
 
   factory Demand.fromJson(Map<String, dynamic> json) => _$DemandFromJson(json);
   Map<String, dynamic> toJson() => _$DemandToJson(this);
 
   @override
   String toString() {
-    return 'Demand{id: $id, vehicleType: $vehicleType, addressDetail: $addressDetail, problemDescription: $problemDescription, customer: $customer, pickupLatitude: $pickupLatitude, pickupLongitude: $pickupLongitude, status: $status, bill: $bill}';
+    return 'Demand{id: $id, vehicleType: $vehicleType, addressDetail: $addressDetail, problemDescription: $problemDescription, customer: $customer, pickupLatitude: $pickupLatitude, pickupLongitude: $pickupLongitude, status: $status, messages: $messages, bill: $bill, createdDate: $createdDate, completedDate: $completedDate}';
   }
 }
 

@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/demand_bloc.dart';
 import 'package:vehicles_saver_partner/blocs/place_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/loading.dart';
 import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/data/models/demand/demand.dart';
 import 'package:vehicles_saver_partner/data/models/map/direction_model.dart';
@@ -246,12 +247,15 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
     switch(widget?.demandBloc?.currentDemand?.status){
       case DemandStatus.PAYING:
         Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.invoiceScreen));
+        return LoadingWidget('');
         break;
       case DemandStatus.COMPLETED:
         Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.homeScreen));
+        return LoadingWidget('');
         break;
       case DemandStatus.CANCELED:
         Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.homeScreen));
+        return LoadingWidget('');
         break;
     }
 
