@@ -375,7 +375,9 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                             radius: 50,
                             backgroundColor: Colors.transparent,
                             backgroundImage: CachedNetworkImageProvider(
-                              demand.customer.avatarUrl,
+                              demand != null?
+                              demand.customer.avatarUrl
+                              :"https://source.unsplash.com/300x300/?portrait",
                             )),
                       ),
                       Padding(

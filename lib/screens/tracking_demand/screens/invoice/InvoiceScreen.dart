@@ -266,7 +266,9 @@ class InvoiceState extends State<InvoiceView> {
                               radius: 30,
                               backgroundColor: Colors.transparent,
                               backgroundImage: CachedNetworkImageProvider(
-                                demandBloc?.currentDemand?.customer?.avatarUrl,
+                                demandBloc.isHavingDemand()?
+                                demandBloc?.currentDemand?.customer?.avatarUrl
+                                :"https://source.unsplash.com/300x300/?portrait",
                               )),
                         ),
                       ),

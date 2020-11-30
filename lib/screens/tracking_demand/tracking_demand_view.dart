@@ -25,7 +25,6 @@ import 'package:vehicles_saver_partner/data/models/map/get_routes_request_model.
 import 'package:vehicles_saver_partner/network/http/apis.dart';
 import 'package:vehicles_saver_partner/components/auto_rotation_marker.dart' as rm;
 import 'package:vehicles_saver_partner/screens/tracking_demand/screens/chat_screen/chat_screen.dart';
-import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/arriving_detail_widget.dart';
 import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/demand_detail_widget.dart';
 import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/icon_action_widget.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
@@ -389,7 +388,9 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
                                                     radius: 30,
                                                     backgroundColor: Colors.transparent,
                                                     backgroundImage: CachedNetworkImageProvider(
-                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl,
+                                                      widget?.demandBloc?.isHavingDemand()?
+                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl
+                                                      :"https://source.unsplash.com/300x300/?portrait",
                                                     )
                                                 ),
                                               ),
@@ -523,7 +524,9 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
                                                     radius: 30,
                                                     backgroundColor: Colors.transparent,
                                                     backgroundImage: CachedNetworkImageProvider(
-                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl,
+                                                      widget?.demandBloc?.isHavingDemand()?
+                                                      widget?.demandBloc?.currentDemand?.customer?.avatarUrl
+                                                      :"https://source.unsplash.com/300x300/?portrait",
                                                     )
                                                 ),
                                               ),
