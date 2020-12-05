@@ -59,6 +59,11 @@ class SocketConnector{
       status = ConnectionStatus.DISCONNECTED;
       print("Connection Error $data");
       onError("Không thể kết nối tới server");
+      socket.off(SocketIO.CONNECT_ERROR);
+      socket.onConnectError((data){
+        status = ConnectionStatus.DISCONNECTED;
+        print("Connection Error $data");
+      });
     });
 
     socket.onConnectTimeout((data){

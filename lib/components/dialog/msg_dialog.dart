@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 
 class MsgDialog {
+  static int num = 0;
+
   static void showMsgDialog(BuildContext context, String title, String msg, Function callback) {
+    num++;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-            title: Text(title),
-            content: Text(msg),
-            actions: [
-              new FlatButton(
-                child: Text("OK"),
-                onPressed: () {
-                  Navigator.of(context).pop(MsgDialog);
-                  if(callback != null) callback();
-                },
-              ),
-            ],
+        title: Text(title),
+        content: Text(msg),
+        actions: [
+          new FlatButton(
+            child: Text("OK"),
+            onPressed: () {
+              hideMsgDialog(context);
+              if(callback != null) callback();
+            },
           ),
+        ],
+      ),
     );
   }
 
   static void showConfirmDialog(BuildContext context, String title, String msg,
       Function onConfirm, Function onCancel) {
+    num++;
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -33,18 +37,24 @@ class MsgDialog {
             FlatButton(
               child: Text('Ok'),
               onPressed: () {
-                Navigator.of(context).pop(MsgDialog);
-                onConfirm();
+                hideMsgDialog(context);
+                if(onConfirm != null) onConfirm();
               },
             ),
             FlatButton(
                 child: Text('Cancel'),
                 onPressed: () {
-                  Navigator.of(context).pop(MsgDialog);
-                  onCancel();
+                  hideMsgDialog(context);
+                  if(onCancel != null) onCancel();
                 })
           ],
         )
     );
+  }
+
+  static hideMsgDialog(BuildContext context) {
+    if(num <= 0) return;
+    Navigator.of(context).pop();
+    num--;
   }
 }
