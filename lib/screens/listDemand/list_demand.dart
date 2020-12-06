@@ -94,7 +94,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
       t.cancel();
       if (!demandBloc.isHavingDemand()) {
         _getCurrentLocation().then((_) {
-          fetchListDemand();
+          updateListDemand();
         });
       }
     });
@@ -487,7 +487,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                         circles: Set<Circle>.of(circles.values),
                         onMapCreated: _onMapCreated,
                         myLocationEnabled: true,
-                        myLocationButtonEnabled: true,
+                        myLocationButtonEnabled: false,
                         initialCameraPosition: CameraPosition(
                           target: LatLng(
                               currentLocation != null

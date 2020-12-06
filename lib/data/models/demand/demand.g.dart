@@ -30,7 +30,9 @@ Demand _$DemandFromJson(Map<String, dynamic> json) {
         : DateTime.parse(json['createdDate'] as String)
     ..completedDate = json['completedDate'] == null
         ? null
-        : DateTime.parse(json['completedDate'] as String);
+        : DateTime.parse(json['completedDate'] as String)
+    ..canceledReason = json['canceledReason'] as String
+    ..canceledBy = json['canceledBy'] as String;
 }
 
 Map<String, dynamic> _$DemandToJson(Demand instance) {
@@ -54,6 +56,9 @@ Map<String, dynamic> _$DemandToJson(Demand instance) {
   writeNotNull('bill', instance.bill);
   writeNotNull('createdDate', instance.createdDate?.toIso8601String());
   writeNotNull('completedDate', instance.completedDate?.toIso8601String());
+  writeNotNull('canceledReason', instance.canceledReason);
+  writeNotNull('canceledBy', instance.canceledBy);
+
   return val;
 }
 

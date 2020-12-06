@@ -22,7 +22,7 @@ class Utility {
     if(time == null){
       return "Null";
     }
-    return "${time.day} ${MONTHS[time.month]} ${time.year}";
+    return "${time.day} ${MONTHS[time.month - 1]} ${time.year}";
   }
   static String parseTimeInDay(DateTime time){
     if(time == null){

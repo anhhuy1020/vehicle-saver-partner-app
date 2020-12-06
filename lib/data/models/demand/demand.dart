@@ -22,6 +22,8 @@ class Demand{
   Bill bill;
   DateTime createdDate;
   DateTime completedDate;
+  String canceledReason;
+  String canceledBy;
 
   Demand();
 
@@ -42,7 +44,7 @@ class Demand{
 
   @override
   String toString() {
-    return 'Demand{id: $id, vehicleType: $vehicleType, addressDetail: $addressDetail, problemDescription: $problemDescription, customer: $customer, pickupLatitude: $pickupLatitude, pickupLongitude: $pickupLongitude, status: $status, messages: $messages, bill: $bill, createdDate: $createdDate, completedDate: $completedDate}';
+    return 'Demand{id: $id, vehicleType: $vehicleType, addressDetail: $addressDetail, problemDescription: $problemDescription, customer: $customer, pickupLatitude: $pickupLatitude, pickupLongitude: $pickupLongitude, status: $status, messages: $messages, bill: $bill, createdDate: $createdDate, completedDate: $completedDate, canceledReason: $canceledReason, canceledBy: $canceledBy}';
   }
 }
 

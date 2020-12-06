@@ -108,6 +108,12 @@ class DemandBloc extends ChangeNotifier {
     socket.fetchListDemand(req);
   }
 
+  void updateLocation(double latitude, double longitude) {
+    Map req = {"latitude": latitude, "longitude": longitude};
+    print("updateLocation: $req");
+    socket.updateLocation(req);
+  }
+
   void acceptDemand(String id, Function onSuccess, Function onError) {
     print("acceptDemand ");
     socket.acceptDemand(id, (data) {
@@ -147,6 +153,18 @@ class DemandBloc extends ChangeNotifier {
       onError(msg);
     });
   }
+
+  cancelDemand(String reason, Function onSuccess, Function onError){
+    print("cancelDemand: $reason");
+    socket.cancelDemand(reason, () {
+      currentDemand = null;
+      onSuccess();
+    }, (msg) {
+      print("create demand error: $msg");
+      onError.call(msg);
+    });
+  }
+
 
   bool isStatus(DemandStatus status) {
     return isHavingDemand() && currentDemand.status == status;

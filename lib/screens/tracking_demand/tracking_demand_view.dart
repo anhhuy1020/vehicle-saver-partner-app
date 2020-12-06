@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
@@ -30,7 +31,7 @@ import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/demand_de
 import 'package:vehicles_saver_partner/screens/tracking_demand/widgets/icon_action_widget.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 import 'package:vehicles_saver_partner/utils/utility.dart';
-
+import 'package:vehicles_saver_partner/config.dart' as Config;
 import '../../app_router.dart';
 import '../../google_map_helper.dart';
 import 'widgets/select_service_widget.dart';
@@ -50,6 +51,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
   var scaffoldKey = GlobalKey<ScaffoldState>();
   List<LatLng> points = <LatLng>[];
   GoogleMapController _mapController;
+  Timer timer;
 
   ExpandableController _expandableController =
   new ExpandableController(initialExpanded: true);
@@ -81,8 +83,10 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
       if (currentLocation != null) {
         moveCameraToMyLocation();
         final Demand currentDemand  = widget?.demandBloc?.currentDemand;
-        _addMarker(toAddressMarkerId, currentDemand.customer.avatarUrl, currentDemand.pickupLatitude, currentDemand.pickupLongitude);
-        getRouter();
+        _addMarker(toAddressMarkerId, currentDemand.customer.avatarUrl, currentDemand.pickupLatitude, currentDemand.pickupLongitude, Colors.blue);
+
+        this.updateLocation();
+        // getRouter();
       }
     });
   }
@@ -90,10 +94,14 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
   @override
   void dispose() {
     super.dispose();
+    widget?.demandBloc?.listenUpdateListDemand(() => print("update partner"));
+    if(timer != null){
+      timer.cancel();
+    }
   }
 
   _addMarker(
-      String markerIdVal, String avatarUrl, double lat, double lng) async {
+      String markerIdVal, String avatarUrl, double lat, double lng, Color borderColor) async {
     print("_addMarker $lat, $lng, $currentLocation");
     final MarkerId markerId = MarkerId(markerIdVal);
     final size = Size(60, 60);
@@ -128,7 +136,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
           image, Offset(borderStroke / 2, borderStroke / 2), Paint());
 
       Paint paintBorder = Paint()
-        ..color = primaryColor
+        ..color = borderColor
         ..strokeWidth = borderStroke.toDouble()
         ..style = PaintingStyle.stroke;
       canvas.drawCircle(center, radius, paintBorder);
@@ -202,13 +210,51 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
     });
   }
 
+  void updateLocation() async{
+    print("updateLocation");
+    await checkPermission();
+    if (!isEnabledLocation) {
+      return;
+    }
+    if(timer != null){
+      timer.cancel();
+    }
+    widget.demandBloc.updateLocation(currentLocation.latitude, currentLocation.longitude);
+
+
+    const timeRequest = const Duration(seconds: 5);
+    Timer.periodic(timeRequest, (Timer t) {
+      timer = t;
+      t.cancel();
+      if (widget.demandBloc.isStatus(DemandStatus.HANDLING)) {
+        _getCurrentLocation().then((_){
+          updateLocation();
+        });
+      }
+    });
+  }
+
   /// Get current location
-  Future<void> _getCurrentLocation() async {
+  Future<Position> _getCurrentLocation() async {
     print("_initCurrentLocation");
 
-    currentLocation = await _locationService.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation);
+
+    Random random = new Random();
+    if(Config.Config.MODE == Config.Config.DEV){
+      currentLocation = Position(latitude: 16.08488181220697 , longitude: 108.1487294517269);
+    } else {
+      currentLocation = await _locationService.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.bestForNavigation);
+    }
+
+    currentLocation = Position(latitude: currentLocation.latitude + random.nextDouble() * 1.0 - 0.5,
+        longitude: currentLocation.longitude + random.nextDouble()* 1.0 - 0.5);
+
+
+    await _addMarker("MyCurrentLocation",widget.authBloc.myInfo.avatarUrl, currentLocation.latitude, currentLocation.longitude, Colors.red);
     print("currentLocation: $currentLocation");
+    return currentLocation;
+
   }
 
   void _onTapMap(LatLng latLng) {
@@ -239,7 +285,89 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
   }
 
   onCancelDemand(){
+    MsgDialog.showConfirmDialog(context, "Hủy yêu cầu", "Bạn có muốn hủy yêu cầu?", () {
+      showCanceledReasonDialog();
+    }, null);
+  }
 
+  showCanceledReasonDialog(){
+    TextEditingController reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Hủy yêu cầu"),
+        content: Container(
+          width: 300,
+          height: 200,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Padding(padding: EdgeInsets.only(top: 5.0)),
+              Container(
+                height: 145,
+                child: TextField(
+                        controller: reasonController,
+                        keyboardType: TextInputType.text,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          contentPadding:
+                          EdgeInsets.fromLTRB(10.0, 10.0, 20.0, 5.0),
+                          border: new OutlineInputBorder(
+                            borderRadius: const BorderRadius.all(
+                              const Radius.circular(10.0),
+                            ),
+                          ),
+                          labelText: 'Lý do',
+                        ),
+                      ),
+              ),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    RaisedButton(
+                      child: new Text(
+                        'Hủy yêu cầu',
+                        style: TextStyle(color: blackColor),
+                      ),
+                      color: primaryColor,
+                      shape: new RoundedRectangleBorder(
+                        borderRadius: new BorderRadius.circular(15.0),
+                      ),
+                      onPressed: () {
+                        String reason = reasonController.text;
+                        if (reason.trim().length <= 0) {
+                          MsgDialog.showMsgDialog(this.context, "",
+                              "Bạn phải nhập lý do mới có thể hủy!", null);
+                        } else {
+                          widget?.demandBloc?.cancelDemand(reason, (){print("canceled success");}, (msg){
+                            print("canceled fail $msg");
+                            MsgDialog.showMsgDialog(this.context, "Hủy yêu cầu thất bại",
+                                msg, () => Navigator.of(this.context).pushNamedAndRemoveUntil(AppRoute.homeScreen, (Route<dynamic> route) => false));
+                          });
+                          Navigator.of(this.context).pop();
+                        }
+                      },
+                    ),
+                    RaisedButton(
+                      child: new Text(
+                        'Quay lại',
+                        style: TextStyle(color: blackColor),
+                      ),
+                      color: greyColor,
+                      shape: new RoundedRectangleBorder(
+                        borderRadius: new BorderRadius.circular(15.0),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ])
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override

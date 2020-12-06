@@ -118,6 +118,13 @@ class SocketConnector{
     },  (msg) => print("fetchCurrentDemand: $msg")
     );
   }
+
+  updateLocation (req) async {
+    checkConnection(() {
+      socket.emit(SocketEvent.UPDATE_LOCATION, [req, token]);
+    },  (msg) => print("updateLocation: $msg")
+    );
+  }
   
   Future<bool> checkConnection(Function callback, Function onError) async {
     if(status == null){
@@ -208,6 +215,23 @@ class SocketConnector{
     );
   }
 
+  cancelDemand (String reason, Function onSuccess, Function onError) {
+    checkConnection(() {
+      onCancelDemand = (res) {
+        print("onCancelDemand");
+        print(res);
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          onSuccess();
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+      };
+      socket.off(SocketEvent.CANCEL_DEMAND);
+      socket.on(SocketEvent.CANCEL_DEMAND, onCancelDemand);
+      socket.emit(SocketEvent.CANCEL_DEMAND, [{"reason":reason},token]);
+    },  onError
+    );
+  }
 }
 
 enum ConnectionStatus{
