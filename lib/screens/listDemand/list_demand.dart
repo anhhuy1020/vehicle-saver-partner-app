@@ -26,6 +26,7 @@ import 'package:vehicles_saver_partner/screens/listDemand/item_demand.dart';
 import 'package:vehicles_saver_partner/screens/search_address/search_address_screen.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 import 'package:vehicles_saver_partner/utils/utility.dart';
+import 'package:vehicles_saver_partner/config.dart' as Config;
 
 class ListDemandScreen extends StatefulWidget {
   @override
@@ -42,25 +43,22 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
 
   Map<MarkerId, Marker> markers = <MarkerId, Marker>{};
   Map<CircleId, Circle> circles = <CircleId, Circle>{};
-  MarkerId selectedMarker;
-  BitmapDescriptor _markerIcon;
-  CircleId selectedCircle;
   double _zoom = 12.0;
-
+  bool _addedMarker = false;
   Map<PolylineId, Polyline> polylines = <PolylineId, Polyline>{};
   PolylineId selectedPolyline;
   Position currentLocation;
   final Geolocator _locationService = Geolocator();
   PermissionStatus permission;
   bool isEnabledLocation = false;
-  double distance = 0;
-  String selectedDistance = "1";
-  double _radius = 5000;
-  List<Map<String, dynamic>> listDistance = [
-    {"id": 1, "title": "5 km"},
-    {"id": 2, "title": "10 km"},
-    {"id": 3, "title": "15 km"}
+  double range = 5;
+  final List<Map<String, dynamic>> listRange = [
+    {"id": 1, "title": "5 km", "range": 5.0, "zoom": 11.5},
+    {"id": 2, "title": "10 km", "range": 10.0, "zoom": 11.2},
+    {"id": 3, "title": "15 km", "range": 20.0, "zoom": 10.5}
   ];
+  Map selectedRange;
+
   Timer timer;
 
   @override
@@ -68,9 +66,9 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     super.initState();
     print("initState");
     _getCurrentLocation().then((_) {
+      if(selectedRange == null) selectedRange = listRange[0];
+      changeCircle();
       print("updateListDemand initState $currentLocation");
-
-      changeCircle(selectedDistance);
       if (currentLocation != null) {
         moveCameraToMyLocation();
       }
@@ -84,12 +82,16 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     if (!isEnabledLocation) {
       return;
     }
+    if(timer != null){
+      timer.cancel();
+    }
 
     fetchListDemand();
 
     const timeRequest = const Duration(seconds: 15);
     Timer.periodic(timeRequest, (Timer t) {
       timer = t;
+      t.cancel();
       if (!demandBloc.isHavingDemand()) {
         _getCurrentLocation().then((_) {
           fetchListDemand();
@@ -100,12 +102,10 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
 
   fetchListDemand() {
     print("fetchListDemand");
+    _addedMarker = false;
     if (currentLocation != null) {
       demandBloc.fetchListDemand(
-          currentLocation.latitude, currentLocation.longitude, (){
-            print("clear marker");
-          this.markers.clear();
-      });
+          currentLocation.latitude, currentLocation.longitude, range, addMarkers);
     }
   }
 
@@ -115,6 +115,9 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
 
     currentLocation = await _locationService.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.bestForNavigation);
+    if(Config.Config.MODE == Config.Config.DEV){
+      currentLocation = Position(latitude: 16.08488181220697, longitude: 108.1487294517269);
+    }
     print("currentLocation: $currentLocation");
   }
 
@@ -166,18 +169,8 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     }
   }
 
-  Future<void> _createMarkerImageFromAsset(BuildContext context) async {
-    if (_markerIcon == null) {
-      final ImageConfiguration imageConfiguration =
-          createLocalImageConfiguration(context);
-      BitmapDescriptor.fromAssetImage(
-              imageConfiguration, "assets/image/marker/car_top_96.png")
-          .then(_updateBitmap);
-    }
-  }
-
   Widget getListOptionDistance() {
-    final List<Widget> choiceChips = listDistance.map<Widget>((value) {
+    final List<Widget> choiceChips = listRange.map<Widget>((value) {
       return new Padding(
           padding: const EdgeInsets.all(3.0),
           child: ChoiceChip(
@@ -189,25 +182,20 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(3.0),
               ),
-              selected: selectedDistance == value['id'].toString(),
+              selected: selectedRange == value,
               label: Text((value['title'])),
               onSelected: (bool check) {
-                setState(() {
-                  selectedDistance = check ? value["id"].toString() : '';
-                  changeCircle(selectedDistance);
-                });
+                if(check) {
+                  selectedRange = value;
+                  changeCircle();
+                  updateListDemand();
+                }
               }));
     }).toList();
     return new Wrap(children: choiceChips);
   }
 
-  void _updateBitmap(BitmapDescriptor bitmap) {
-    setState(() {
-      _markerIcon = bitmap;
-    });
-  }
-
-  void _addMarker(
+  Future<void> _addMarker(
       String markerIdVal, String avatarUrl, double lat, double lng) async {
     final MarkerId markerId = MarkerId(markerIdVal);
     print("addmarker: $markerIdVal");
@@ -263,6 +251,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
       );
       setState(() {
         markers[markerId] = marker;
+
       });
     });
   }
@@ -271,7 +260,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     print("_onMarkerTapped $markerId");
   }
 
-  void _addCircle() {
+    void _addCircle() {
     if (currentLocation == null) return;
     final int circleCount = circles.length;
     if (circleCount == 12) {
@@ -279,7 +268,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
     }
     final String circleIdVal = 'circle_id';
     final CircleId circleId = CircleId(circleIdVal);
-    print("_addCircle $circleIdVal, $circleId, $circles");
+    print("_addCircle $circleIdVal, $circleId, $circles, range = $range");
 
     final Circle circle = Circle(
       circleId: circleId,
@@ -288,7 +277,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
       fillColor: Color.fromRGBO(135, 206, 250, 0.3),
       strokeWidth: 4,
       center: LatLng(currentLocation.latitude, currentLocation.longitude),
-      radius: _radius,
+      radius: range * 1000,
     );
     setState(() {
       circles[circleId] = circle;
@@ -301,51 +290,24 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
   ///My data is demo. You can get data from your api and use my function
   ///to filter and display markers around the current location.
 
-  changeCircle(String selectedCircle) {
-    if (selectedCircle == "1") {
-      setState(() {
-        _radius = 5000;
-        _zoom = 11.5;
-        _moveCamera(_zoom);
-      });
-    }
-    if (selectedCircle == "2") {
-      setState(() {
-        _radius = 10000;
-        _zoom = 11.2;
-        _moveCamera(_zoom);
-      });
-    }
-    if (selectedCircle == "3") {
-      setState(() {
-        _radius = 15000;
-        _zoom = 10.5;
-        _moveCamera(_zoom);
-      });
-    }
+  changeCircle() {
+    if (this.selectedRange == null) return;
+    range = this.selectedRange['range'];
+    _zoom = this.selectedRange['zoom'];
+    _moveCamera(_zoom);
+
     _addCircle();
-    for (int i = 0; i < demandBloc.availableDemands.length; i++) {
-      Demand demand = demandBloc.availableDemands[i];
-      distance = Utility.calculateDistance(
-          currentLocation.latitude,
-          currentLocation.longitude,
-          demand.pickupLatitude,
-          demand.pickupLongitude);
-      if (distance * 1000 < _radius) {
-        _addMarker(demand.id, demand.customer.avatarUrl, demand.pickupLatitude,
-            demand.pickupLongitude);
-      } else {
-        print("remove demand ${demand.id}");
-        _remove(demand.id);
-      }
-    }
   }
 
-  void _remove(String idMarker) {
-    final MarkerId markerId = MarkerId(idMarker);
-    setState(() {
-      markers.remove(markerId);
-    });
+  addMarkers() async{
+    if(currentLocation == null) return;
+    this.markers.clear();
+    for (int i = 0; i < demandBloc.availableDemands.length; i++) {
+      Demand demand = demandBloc.availableDemands[i];
+        _addMarker(demand.id, demand.customer.avatarUrl, demand.pickupLatitude,
+            demand.pickupLongitude);
+
+    }
   }
 
   _moveCamera(double zoom) {
@@ -458,6 +420,12 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
       Future.microtask(() => Navigator.pushReplacementNamed(context, AppRoute.trackingDemandScreen));
     }
     print("build ${demandBloc.availableDemands}");
+
+
+    print("build circles =  ${circles}");
+    print("build marker =  ${markers}");
+
+
     return new Scaffold(
       key: _scaffoldKey,
       endDrawer: Drawer(
@@ -519,7 +487,7 @@ class _ListDemandScreenState extends State<ListDemandScreen> {
                         circles: Set<Circle>.of(circles.values),
                         onMapCreated: _onMapCreated,
                         myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
+                        myLocationButtonEnabled: true,
                         initialCameraPosition: CameraPosition(
                           target: LatLng(
                               currentLocation != null

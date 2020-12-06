@@ -15,7 +15,7 @@ class DemandBloc extends ChangeNotifier {
   List<Demand> availableDemands = [];
 
   Function onUpdateListDemand = (data) => print("onUpdateListDemand: $data");
-  
+
   SocketConnector socket;
 
   bool initSocketConnect = false;
@@ -26,7 +26,7 @@ class DemandBloc extends ChangeNotifier {
     socket.listenUpdateCurrentDemand(updateCurrentDemand);
     socket.listenUpdateListDemand(updateListDemand);
   }
-  
+
   listenUpdateListDemand(Function listener){
     this.onUpdateListDemand = listener;
   }
@@ -76,7 +76,7 @@ class DemandBloc extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateListDemand(data) {
+  void updateListDemand(data) async{
     print("updateListDemand 1 $data");
     if (data["errorCode"] != SocketError.SUCCESS) return;
     if (data["body"] != null) {
@@ -93,7 +93,7 @@ class DemandBloc extends ChangeNotifier {
       this.availableDemands = [];
     }
     print("updateListDemand 2 ${this.availableDemands}");
-    onUpdateListDemand(availableDemands);
+    await onUpdateListDemand();
     notifyListeners();
   }
 
@@ -101,8 +101,8 @@ class DemandBloc extends ChangeNotifier {
     return currentDemand != null;
   }
 
-  void fetchListDemand(double latitude, double longitude, Function callback) {
-    Map req = {"latitude": latitude, "longitude": longitude};
+  void fetchListDemand(double latitude, double longitude, range, Function callback) {
+    Map req = {"latitude": latitude, "longitude": longitude, "range": range};
     print("fetchListDemand: $req");
     this.onUpdateListDemand = callback;
     socket.fetchListDemand(req);
