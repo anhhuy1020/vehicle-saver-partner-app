@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'partner.g.dart';
 
-@JsonSerializable(nullable: false)
+@JsonSerializable(nullable: true)
 class Partner extends ChangeNotifier {
   @JsonKey(name: '_id')
   String id;

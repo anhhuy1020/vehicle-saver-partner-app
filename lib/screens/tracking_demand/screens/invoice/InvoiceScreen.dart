@@ -14,7 +14,7 @@ import 'package:vehicles_saver_partner/components/dialog/loading.dart';
 import 'package:vehicles_saver_partner/components/dialog/loading_dialog.dart';
 import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/components/ink_well_custom.dart';
-import 'package:vehicles_saver_partner/components/validations.dart';
+import 'package:vehicles_saver_partner/utils/validations.dart';
 import 'package:vehicles_saver_partner/config.dart';
 import 'package:vehicles_saver_partner/data/models/bill/bill.dart';
 import 'package:vehicles_saver_partner/data/models/bill/bill_item.dart';

@@ -1,16 +1,20 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:vehicles_saver_partner/blocs/auth_bloc.dart';
+import 'package:vehicles_saver_partner/components/dialog/loading_dialog.dart';
+import 'package:vehicles_saver_partner/components/dialog/msg_dialog.dart';
 import 'package:vehicles_saver_partner/components/ink_well_custom.dart';
 import 'package:vehicles_saver_partner/components/inputDropdown.dart';
 import 'package:vehicles_saver_partner/theme/style.dart';
 import 'package:intl/intl.dart';
+import 'package:vehicles_saver_partner/utils/validations.dart';
+import 'dart:io' as IO;
 
-
-const double _kPickerSheetHeight = 216.0;
 
 class EditProfile extends StatefulWidget {
   @override
@@ -24,11 +28,46 @@ class _EditProfileState extends State<EditProfile> {
   List<Map<String, dynamic>> listGender = [{"id": '0',"name" : 'Male',},{"id": '1',"name" : 'Female',}];
   String selectedGender;
   String lastSelectedValue;
+  bool autoValidate = false;
+  Validations validations = new Validations();
+
   DateTime date = DateTime.now();
   var _image;
 
+  Map editedProfile = new Map();
+
+
+  submit() {
+    final FormState form = formKey.currentState;
+    if(!form.validate()){
+      autoValidate = true; // Start validating on every change.
+    }else {
+      form.save();
+      if (editedProfile.isEmpty) {
+        MsgDialog.showMsgDialog(
+            context, "Cập nhật thông tin", "Bạn không thay đổi gì cả", null);
+        return;
+      }
+      LoadingDialog.showLoadingDialog(context, "Loading..");
+      authBloc.updateProfile(editedProfile, () {
+        LoadingDialog.hideLoadingDialog(context);
+        Navigator.pop(context);
+      }, (msg) {
+        LoadingDialog.hideLoadingDialog(context);
+        MsgDialog.showMsgDialog(context, "Cập nhật thông tin", msg, null);
+      });
+    }
+  }
+
+  parseImage(IO.File image){
+    if (image == null) return;
+    String base64Image = base64Encode(image.readAsBytesSync());
+    editedProfile['avatarUrl'] = base64Image;
+  }
+
   Future getImageLibrary() async {
-    var gallery = await ImagePicker.pickImage(source: ImageSource.gallery,maxWidth: 700);
+    IO.File gallery = await ImagePicker.pickImage(source: ImageSource.gallery,maxWidth: 700);
+    parseImage(gallery);
     setState(() {
       _image = gallery;
     });
@@ -36,32 +75,10 @@ class _EditProfileState extends State<EditProfile> {
 
   Future cameraImage() async {
     var image = await ImagePicker.pickImage(source: ImageSource.camera,maxWidth: 700);
+    parseImage(image);
     setState(() {
       _image = image;
     });
-  }
-
-
-  Widget _buildBottomPicker(Widget picker) {
-    return Container(
-      height: _kPickerSheetHeight,
-      padding: const EdgeInsets.only(top: 6.0),
-      color: CupertinoColors.white,
-      child: DefaultTextStyle(
-        style: const TextStyle(
-          color: CupertinoColors.black,
-          fontSize: 22.0,
-        ),
-        child: GestureDetector(
-          // Blocks taps from propagating to the modal sheet and popping.
-          onTap: () {},
-          child: SafeArea(
-            top: false,
-            child: picker,
-          ),
-        ),
-      ),
-    );
   }
 
   void showDemoActionSheet({BuildContext context, Widget child}) {
@@ -107,14 +124,9 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
-  submit(){
-    final FormState form = formKey.currentState;
-    form.save();
-    Navigator.pop(context);
-  }
-
   @override
   Widget build(BuildContext context) {
+    print("build editprofie");
     authBloc = Provider.of<AuthBloc>(context);
     return Scaffold(
       key: _scaffoldKey,
@@ -136,7 +148,7 @@ class _EditProfileState extends State<EditProfile> {
             elevation: 0.0,
             color: primaryColor,
             icon: Text(''),
-            label: Text('SAVE', style: headingBlack,),
+            label: Text('LƯU', style: headingBlack,),
             onPressed: (){
               submit();
             },
@@ -202,11 +214,13 @@ class _EditProfileState extends State<EditProfile> {
                                     child: Container(
                                       padding: EdgeInsets.only(left: 20.0),
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.start,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: <Widget>[
-                                          TextField(
+                                          TextFormField(
                                             style: textStyle,
+                                            initialValue:authBloc.myInfo.name,
+                                            autovalidate:autoValidate,
+                                            validator: validations.validateName,
                                             decoration: InputDecoration(
                                                 fillColor: whiteColor,
                                                 labelStyle: textStyle,
@@ -216,16 +230,8 @@ class _EditProfileState extends State<EditProfile> {
                                                 border: UnderlineInputBorder(
                                                     borderSide:
                                                     BorderSide(color: Colors.white))),
-                                            controller:
-                                            TextEditingController.fromValue(
-                                              TextEditingValue(
-                                                text: authBloc.myInfo.name,
-                                                selection: TextSelection.collapsed(
-                                                    offset: 11),
-                                              ),
-                                            ),
                                             onChanged: (String name) {
-                                              authBloc.myInfo.name = name;
+                                              editedProfile['name'] = name;
                                             },
                                           ),
                                         ],
@@ -242,7 +248,7 @@ class _EditProfileState extends State<EditProfile> {
                               children: <Widget>[
                                 Container(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: <Widget>[
                                       Expanded(
                                         flex: 2,
@@ -256,7 +262,10 @@ class _EditProfileState extends State<EditProfile> {
                                       ),
                                       Expanded(
                                         flex: 4,
-                                        child: TextField(
+                                        child: TextFormField(
+                                          initialValue: authBloc.myInfo.phone,
+                                          autovalidate:autoValidate,
+                                          validator: validations.validatePhone,
                                           style: textStyle,
                                           keyboardType: TextInputType.phone,
                                           decoration: InputDecoration(
@@ -268,15 +277,8 @@ class _EditProfileState extends State<EditProfile> {
                                                   borderSide: BorderSide(
                                                       color: Colors.white))
                                           ),
-                                          controller: TextEditingController.fromValue(
-                                            TextEditingValue(
-                                              text: authBloc.myInfo.phone,
-                                              selection: TextSelection.collapsed(
-                                                  offset: 11),
-                                            ),
-                                          ),
                                           onChanged: (String phone) {
-                                            authBloc.myInfo.phone = phone;
+                                            editedProfile['phone'] = phone;
                                           },
                                         ),
                                       )
@@ -285,7 +287,7 @@ class _EditProfileState extends State<EditProfile> {
                                 ),
                                 Container(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: <Widget>[
                                       Expanded(
                                         flex: 2,
@@ -299,7 +301,10 @@ class _EditProfileState extends State<EditProfile> {
                                       ),
                                       Expanded(
                                         flex: 4,
-                                        child: TextField(
+                                        child: TextFormField(
+                                          initialValue: authBloc.myInfo.email,
+                                          autovalidate:autoValidate,
+                                          validator: validations.validateEmail,
                                           keyboardType: TextInputType.emailAddress,
                                           style: textStyle,
                                           decoration: InputDecoration(
@@ -312,15 +317,8 @@ class _EditProfileState extends State<EditProfile> {
                                                   borderSide: BorderSide(
                                                       color: Colors.white))
                                           ),
-                                          controller: TextEditingController.fromValue(
-                                            TextEditingValue(
-                                              text: authBloc.myInfo.email,
-                                              selection: TextSelection.collapsed(
-                                                  offset: 11),
-                                            ),
-                                          ),
                                           onChanged: (String email) {
-                                            authBloc.myInfo.email = email;
+                                            editedProfile['email'] = email;
                                           },
                                         ),
                                       )
@@ -329,90 +327,39 @@ class _EditProfileState extends State<EditProfile> {
                                 ),
                                 Container(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: <Widget>[
                                       Expanded(
                                         flex: 2,
                                         child: Container(
                                           padding: EdgeInsets.only(right: 10.0),
                                           child: Text(
-                                            "Gender",
+                                            "Address",
                                             style: textStyle,
                                           ),
                                         ),
                                       ),
                                       Expanded(
                                         flex: 4,
-                                        child: DropdownButtonHideUnderline(
-                                            child: Container(
-                                              // padding: EdgeInsets.only(bottom: 12.0),
-                                              child: InputDecorator(
-                                                decoration: const InputDecoration(
-                                                ),
-                                                isEmpty: selectedGender == null,
-                                                child: DropdownButton<String>(
-                                                  hint: Text("Gender",style: textStyle,),
-                                                  value: selectedGender,
-                                                  isDense: true,
-                                                  onChanged: (String newValue) {
-                                                    setState(() {
-                                                      selectedGender = newValue;
-                                                      print(selectedGender);
-                                                    });
-                                                  },
-                                                  items: listGender.map((value) {
-                                                    return DropdownMenuItem<String>(
-                                                      value: value['id'],
-                                                      child: Text(value['name'],style: textStyle,),
-                                                    );
-                                                  }).toList(),
-                                                ),
-                                              ),
-                                            )
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: <Widget>[
-                                      Expanded(
-                                        flex: 2,
-                                        child: Container(
-                                          padding: EdgeInsets.only(right: 10.0),
-                                          child: Text(
-                                            "Birthday",
-                                            style: textStyle,
+                                        child: TextFormField(
+                                          initialValue: authBloc.myInfo.address,
+                                          autovalidate:autoValidate,
+                                          validator: validations.validateAddress,
+                                          keyboardType: TextInputType.text,
+                                          style: textStyle,
+                                          decoration: InputDecoration(
+                                              fillColor: whiteColor,
+                                              labelStyle: textStyle,
+                                              hintStyle:
+                                              TextStyle(color: Colors.white),
+                                              counterStyle: textStyle,
+                                              border: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                      color: Colors.white))
                                           ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 4,
-                                        child:  GestureDetector(
-                                            onTap: () {
-                                              showCupertinoModalPopup<void>(
-                                                context: context,
-                                                builder: (BuildContext context) {
-                                                  return _buildBottomPicker(
-                                                    CupertinoDatePicker(
-                                                      mode: CupertinoDatePickerMode.date,
-                                                      initialDateTime: date,
-                                                      onDateTimeChanged: (DateTime newDateTime) {
-                                                        setState(() {
-                                                          date = newDateTime;
-                                                        });
-                                                      },
-                                                    ),
-                                                  );
-                                                },
-                                              );
-                                            },
-                                            child: InputDropdown(
-                                              valueText: DateFormat.yMMMMd().format(date),
-                                              valueStyle: TextStyle(color: blackColor),
-                                            )
+                                          onChanged: (String address) {
+                                            editedProfile['address'] = address;
+                                          },
                                         ),
                                       )
                                     ],
@@ -432,3 +379,4 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 }
+

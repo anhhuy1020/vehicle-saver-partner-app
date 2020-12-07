@@ -19,6 +19,8 @@ class SocketConnector{
   Function onLoginSuccess = (data) {print ("onLoginSuccess $data");};
   Function onUpdateListDemand = (data) {print ("onUpdateListDemand $data");};
   Function onUpdateCurrentDemand = (data) {print ("onUpdateCurrentDemand $data");};
+  Function onUpdateProfileSuccess = (data) {print ("onUpdateProfile success $data");};
+  Function onUpdateProfile = (msg) {print ("onUpdateProfileError $msg");};
   Function onInvoice;
   String token;
 
@@ -92,6 +94,10 @@ class SocketConnector{
     });
   }
 
+  listenUpdateProfile(Function listener){
+    onUpdateProfileSuccess = listener;
+  }
+
   listenUpdateCurrentDemand(Function listener){
     onUpdateCurrentDemand = listener;
   }
@@ -154,6 +160,26 @@ class SocketConnector{
     },  onError
     );
   }
+
+  updateProfile (Map req, Function onSuccess, Function onError) async {
+    print("update profile: $req");
+    checkConnection(() {
+      onUpdateProfile = (res) {
+        print("onUpdateProfile profile: $res");
+        if (res['errorCode'] == SocketError.SUCCESS) {
+          this.onUpdateProfileSuccess(res['body']);
+          onSuccess();
+        } else {
+          onError(res['body']["errorMessage"]);
+        }
+      };
+      socket.off(SocketEvent.UPDATE_PROFILE);
+      socket.on(SocketEvent.UPDATE_PROFILE, onUpdateProfile);
+      socket.emit(SocketEvent.UPDATE_PROFILE, [req, token]);
+    },  onError
+    );
+  }
+
 
   acceptDemand (String demandId, Function onSuccess, Function onError) async {
     checkConnection(() {

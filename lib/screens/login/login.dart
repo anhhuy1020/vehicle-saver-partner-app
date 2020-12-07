@@ -120,7 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                                           child: TextFormField(
                                                             initialValue: "huyho1712@gmail.com",
                                                               keyboardType: TextInputType.emailAddress,
-                                                              validator: validations.validateEmail,
+                                                            autovalidate:autoValidate,
+                                                            validator: validations.validateEmail,
                                                               decoration: InputDecoration(
                                                                   border: OutlineInputBorder(
                                                                     borderRadius: BorderRadius.circular(10.0),
@@ -142,7 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                                             initialValue: "Huy3763958",
 
                                                             keyboardType: TextInputType.text,
-                                                              validator: validations.validatePassword,
+                                                            autovalidate:autoValidate,
+                                                            validator: validations.validatePassword,
                                                               obscureText: true,
                                                               decoration: InputDecoration(
                                                                   border: OutlineInputBorder(
