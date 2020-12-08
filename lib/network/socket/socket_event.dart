@@ -9,4 +9,5 @@ class SocketEvent {
   static const String INVOICE = "invoice";
   static const String CHAT = "chat";
   static const String UPDATE_PROFILE = "update_profile";
+  static const String LOGOUT = "logout";
 }

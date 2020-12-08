@@ -16,6 +16,13 @@ class _ProfilePageState extends State<ProfilePage>{
   AuthBloc authBloc;
   DemandBloc demandBloc;
 
+  onLogout(){
+    authBloc.logout();
+    demandBloc.cleanUp();
+    authBloc.cleanUp();
+    Navigator.of(context).pushReplacementNamed(AppRoute.loginScreen);
+  }
+
   @override
   Widget build(BuildContext context) {
     authBloc = Provider.of<AuthBloc>(context);
@@ -170,11 +177,7 @@ class _ProfilePageState extends State<ProfilePage>{
                             color: primaryColor,
                             icon: new Text(""),
                             label: new Text('Đăng xuất', style: TextStyle(color: Colors.black),),
-                            onPressed: (){
-                              demandBloc.cleanUp();
-                              authBloc.cleanUp();
-                              Navigator.of(context).pushReplacementNamed(AppRoute.loginScreen);
-                            },
+                            onPressed: onLogout,
                           ),
                         ),
                     ],

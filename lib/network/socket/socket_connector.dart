@@ -258,6 +258,10 @@ class SocketConnector{
     },  onError
     );
   }
+
+  logout(){
+    socket.emit(SocketEvent.LOGOUT, []);
+  }
 }
 
 enum ConnectionStatus{

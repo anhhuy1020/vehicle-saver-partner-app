@@ -44,6 +44,10 @@ class AuthBloc extends ChangeNotifier{
     socket.updateProfile(req, onSuccess, onError);
   }
 
+  logout(){
+    socket.logout();
+  }
+
   cleanUp(){
     this.myInfo = null;
     this.socket.token = "";

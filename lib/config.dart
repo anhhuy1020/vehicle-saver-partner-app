@@ -11,6 +11,7 @@ class Config{
 }
 
 class SharedPreferenceKeys {
-  static const String IS_USER_LOGGED_IN = "IS_USER_LOGGED_IN";
-  static const String USER = "USER";
+  static const String EMAIL = "email";
+  static const String PASSWORD = "password";
+  static const String TOKEN = "token";
 }
