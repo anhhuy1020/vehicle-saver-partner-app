@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                         SizedBox(
                                                           height:80,
                                                           child: TextFormField(
-                                                            initialValue: "huyho1712@gmail.com",
+                                                            // initialValue: "huyho1712@gmail.com",
                                                               keyboardType: TextInputType.emailAddress,
                                                             autovalidate:autoValidate,
                                                             validator: validations.validateEmail,
@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                         SizedBox(
                                                           height: 80,
                                                           child: TextFormField(
-                                                            initialValue: "Huy3763958",
+                                                            // initialValue: "Huy3763958",
 
                                                             keyboardType: TextInputType.text,
                                                             autovalidate:autoValidate,
