@@ -267,7 +267,7 @@ class _HistoryDetailState extends State<HistoryDetail> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Expanded(
-                flex: 1,
+                flex: 2,
                 child: Container(
                   padding: EdgeInsets.only(top: 10, bottom: 10),
                   child: Column(
@@ -286,7 +286,7 @@ class _HistoryDetailState extends State<HistoryDetail> {
                         color: Colors.grey,
                       ),
                       Text(
-                        Utility.parseTimeInDay(widget?.demand?.completedDate),
+                        widget?.demand?.completedDate != null? Utility.parseTimeInDay(widget?.demand?.completedDate):"Canceled",
                         style:
                             TextStyle(color: Color(0xFF97ADB6), fontSize: 13.0),
                       ),
@@ -295,7 +295,7 @@ class _HistoryDetailState extends State<HistoryDetail> {
                 ),
               ),
               Expanded(
-                flex: 6,
+                flex: 8,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   crossAxisAlignment: CrossAxisAlignment.start,

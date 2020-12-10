@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
               BottomNavigationBarItem(
                   icon: Icon(Icons.history), label: 'Lịch sử'),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.view_list), label: 'Danh sách yêu cầu'),
+                  icon: Icon(Icons.view_list), label: 'Yêu cầu'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.notifications), label: 'Thông báo'),
               BottomNavigationBarItem(

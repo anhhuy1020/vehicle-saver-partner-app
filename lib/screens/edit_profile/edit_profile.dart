@@ -226,7 +226,7 @@ class _EditProfileState extends State<EditProfile> {
                                                 labelStyle: textStyle,
                                                 hintStyle: TextStyle(color: Colors.white),
                                                 counterStyle: textStyle,
-                                                hintText: "Name",
+                                                hintText: "Tên",
                                                 border: UnderlineInputBorder(
                                                     borderSide:
                                                     BorderSide(color: Colors.white))),
@@ -255,7 +255,7 @@ class _EditProfileState extends State<EditProfile> {
                                         child: Container(
                                           padding: EdgeInsets.only(right: 10.0),
                                           child: Text(
-                                            "Phone Number",
+                                            "Số điện thoại",
                                             style: textStyle,
                                           ),
                                         ),
@@ -334,7 +334,7 @@ class _EditProfileState extends State<EditProfile> {
                                         child: Container(
                                           padding: EdgeInsets.only(right: 10.0),
                                           child: Text(
-                                            "Address",
+                                            "Địa chỉ",
                                             style: textStyle,
                                           ),
                                         ),

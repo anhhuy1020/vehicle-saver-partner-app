@@ -127,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage>{
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
-                            Text('Phone Number',style: textStyle,),
+                            Text('Số Điện thoại',style: textStyle,),
                             Text(authBloc.myInfo.phone,style: textGrey,)
                           ],
                         ),
@@ -144,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage>{
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
-                            Text('Address',style: textStyle,),
+                            Text('Địa chỉ',style: textStyle,),
                             Text(authBloc.myInfo.address,style: textGrey,)
                           ],
                         ),
