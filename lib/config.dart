@@ -3,9 +3,9 @@ class Config{
   static const String LANGUAGE = 'vi';
   static const String REGION = 'VN';
   static const String CURRENCY = "đ";
-  static const String MODE = "dev";
+  static const String MODE = "release";
   static const String DEV = "dev";
-  static const String RELEASE = "dev";
+  static const String RELEASE = "release";
   static const String SERVICE_URI = MODE ==DEV?'http://10.0.2.2:3002':'https://vehicle-saver.herokuapp.com';
 
 }
