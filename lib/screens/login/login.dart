@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Container(
               height: MediaQuery.of(context).size.height,
             child: InkWellCustom(
-              onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
+              // onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[

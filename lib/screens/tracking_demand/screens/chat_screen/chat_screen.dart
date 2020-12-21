@@ -87,7 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: demandBloc?.currentDemand?.messages?.isNotEmpty?
                 GestureDetector(
                     onHorizontalDragDown: (_){
-                      FocusScope.of(context).requestFocus(new FocusNode());
+                      // FocusScope.of(context).requestFocus(new FocusNode());
                     },
                     child: ListView.builder(
                       padding: EdgeInsets.all(8.0),

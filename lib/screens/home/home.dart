@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: primaryColor,
+            leading: Container(),
             title: Text("Trang chủ", style: TextStyle(color: Colors.black)),
           ),
           body: _widgetOptions.elementAt(_selectedIndex),

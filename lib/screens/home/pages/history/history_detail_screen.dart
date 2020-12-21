@@ -51,7 +51,7 @@ class _HistoryDetailState extends State<HistoryDetail> {
           },
           child: SingleChildScrollView(
             child: InkWellCustom(
-              onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
+              // onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
               child: Container(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

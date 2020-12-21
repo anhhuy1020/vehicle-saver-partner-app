@@ -250,7 +250,7 @@ class InvoiceState extends State<InvoiceView> {
           },
           child: SingleChildScrollView(
             child: InkWellCustom(
-              onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
+              // onTap: () => FocusScope.of(context).requestFocus(new FocusNode()),
               child: Container(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

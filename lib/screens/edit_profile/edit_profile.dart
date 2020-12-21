@@ -163,7 +163,7 @@ class _EditProfileState extends State<EditProfile> {
             },
             child: SingleChildScrollView(
               child: InkWellCustom(
-                  onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
+                  // onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
                   child: Form(
                     key: formKey,
                     child: Container(

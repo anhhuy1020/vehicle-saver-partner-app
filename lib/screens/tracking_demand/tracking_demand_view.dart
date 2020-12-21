@@ -390,7 +390,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
       return Scaffold(
       body: GestureDetector(
         onTap: () {
-          FocusScope.of(context).requestFocus(new FocusNode());
+          // FocusScope.of(context).requestFocus(new FocusNode());
         },
         child: Stack(
           children: <Widget>[
