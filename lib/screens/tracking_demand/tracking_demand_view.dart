@@ -399,7 +399,7 @@ class _TrackingDemandViewState extends State<TrackingDemandView> {
               child: GoogleMap(
                 markers: Set<Marker>.of(markers.values),
                 onMapCreated: _onMapCreated,
-                myLocationEnabled: true,
+                myLocationEnabled: false,
                 myLocationButtonEnabled: false,
                 compassEnabled: false,
                 onTap: _onTapMap,
